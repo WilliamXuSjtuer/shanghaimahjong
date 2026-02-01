@@ -1225,10 +1225,10 @@
             return aiGenders[playerIndex - 1] || 'female';  // AI 性别
         }
         
-        // 音量配置（男声音量增益）
+        // 音量配置（降低女声来平衡，因为 volume 最大只能是 1.0）
         const AUDIO_VOLUMES = {
-            female: 1.0,
-            male: 1.8  // 男声音量增益，调大到1.8倍
+            female: 0.6,  // 降低女声音量
+            male: 1.0     // 男声满音量
         };
         
         // 播放牌的音频（支持男女声，注意：单人模式在 mahjong/ 子目录）
