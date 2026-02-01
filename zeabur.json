@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.zeabur.app/template.json",
+  "name": "上海敲麻",
+  "description": "多人在线麻将游戏 - 邀请好友一起玩",
+  "template": "NODEJS",
+  "port": 3000,
+  "build": {
+    "command": "npm install"
+  },
+  "start": {
+    "command": "npm start"
+  },
+  "healthCheck": {
+    "path": "/",
+    "interval": 30
+  }
+}
