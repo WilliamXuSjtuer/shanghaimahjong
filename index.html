@@ -2216,43 +2216,19 @@
         let audioLoading = false;
         let audioEnabled = true; // 弱网时可禁用
         
-        // 智能预加载音频 - 分批加载，避免阻塞（男女双版本）
+        // 智能预加载音频 - 只预加载必要的，避免卡顿
         function preloadMultiplayerAudio() {
-            // 低端设备或弱网时减少预加载
-            if (isLowEndDevice || networkQuality === 'slow') {
-                console.log('低端设备/弱网模式：跳过音频预加载，使用懒加载');
-                return;
-            }
-            
-            // 优先加载动作音频（更重要）- 男女双版本
-            const priorityAudios = ['peng', 'gang', 'hu', 'ting', 'zimo'];
-            const genders = ['female', 'male'];
-            
-            genders.forEach(gender => {
-                const format = AUDIO_FORMATS[gender];
-                priorityAudios.forEach(a => {
-                    preloadSingleAudio(`audio/${gender}/actions/${a}${format}`);
-                });
+            // 跳过预加载，使用纯懒加载策略，避免卡顿
+            console.log('音频使用懒加载模式，避免启动卡顿');
+        }
+        
+        // 游戏开始时预加载当前性别的动作音频
+        function preloadCurrentGenderAudio(gender) {
+            const priorityAudios = ['peng', 'gang', 'hu', 'zimo'];
+            const format = AUDIO_FORMATS[gender] || '.mp3';
+            priorityAudios.forEach(a => {
+                preloadSingleAudio(`audio/${gender}/actions/${a}${format}`);
             });
-            
-            // 延迟加载牌音频 - 男女双版本
-            setTimeout(() => {
-                if (networkQuality !== 'slow') {
-                    const tiles = [
-                        'wan1', 'wan2', 'wan3', 'wan4', 'wan5', 'wan6', 'wan7', 'wan8', 'wan9',
-                        'tong1', 'tong2', 'tong3', 'tong4', 'tong5', 'tong6', 'tong7', 'tong8', 'tong9',
-                        'tiao1', 'tiao2', 'tiao3', 'tiao4', 'tiao5', 'tiao6', 'tiao7', 'tiao8', 'tiao9'
-                    ];
-                    // 分批加载女声
-                    loadAudioBatch(tiles.map(t => `audio/female/tiles/${t}.mp3`), 5, 200);
-                    // 延迟加载男声
-                    setTimeout(() => {
-                        loadAudioBatch(tiles.map(t => `audio/male/tiles/${t}.mp3`), 5, 200);
-                    }, 5000);
-                }
-            }, 3000);
-            
-            console.log('音频智能预加载已启动（男女双版本）');
         }
         
         // 预加载单个音频

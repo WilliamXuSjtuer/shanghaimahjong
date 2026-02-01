@@ -1246,35 +1246,19 @@
             playAudioFile(`../audio/${gender}/actions/${action}${format}`, volume);
         }
         
-        // 预加载所有音频（可选，提升响应速度）- 男女双版本
+        // 预加载音频 - 只预加载选定性别的动作音频，避免卡顿
         function preloadAudio() {
-            const tiles = [
-                'wan1', 'wan2', 'wan3', 'wan4', 'wan5', 'wan6', 'wan7', 'wan8', 'wan9',
-                'tong1', 'tong2', 'tong3', 'tong4', 'tong5', 'tong6', 'tong7', 'tong8', 'tong9',
-                'tiao1', 'tiao2', 'tiao3', 'tiao4', 'tiao5', 'tiao6', 'tiao7', 'tiao8', 'tiao9',
-                'dong', 'nan', 'xi', 'bei', 'zhong', 'fa', 'bai',
-                'chun', 'xia', 'qiu', 'dong_hua', 'mei', 'lan', 'zhu', 'ju'
-            ];
-            const actions = ['peng', 'gang', 'hu', 'ting', 'zimo', 'buhua'];
-            const genders = ['female', 'male'];
+            // 只预加载当前选择性别的动作音频（最重要的几个）
+            const actions = ['peng', 'gang', 'hu', 'zimo'];
+            const format = AUDIO_FORMATS[playerGender] || '.mp3';
             
-            // 预加载男女双版本音频（单人模式在 mahjong/ 子目录）
-            genders.forEach(gender => {
-                const format = AUDIO_FORMATS[gender];
-                tiles.forEach(t => {
-                    const path = `../audio/${gender}/tiles/${t}${format}`;
-                    const audio = new Audio(path);
-                    audio.load();
-                    audioCache[path] = audio;
-                });
-                actions.forEach(a => {
-                    const path = `../audio/${gender}/actions/${a}${format}`;
-                    const audio = new Audio(path);
-                    audio.load();
-                    audioCache[path] = audio;
-                });
+            actions.forEach(a => {
+                const path = `../audio/${playerGender}/actions/${a}${format}`;
+                const audio = new Audio(path);
+                audio.load();
+                audioCache[path] = audio;
             });
-            console.log('音频预加载完成（男女双版本）');
+            console.log('动作音频预加载完成，其他使用懒加载');
         }
         
         // 页面加载后预加载音频
