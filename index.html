@@ -2190,17 +2190,25 @@
             }
         }
         
+        // 音量配置（男声音量增益）
+        const AUDIO_VOLUMES = {
+            female: 1.0,
+            male: 1.8  // 男声音量增益，调大到1.8倍
+        };
+        
         // 播放牌的音频（支持男女声）
         function playTileAudio(tile, gender = 'female') {
             const name = getTileAudioName(tile);
             const format = AUDIO_FORMATS[gender] || '.mp3';
-            playAudioFile(`audio/${gender}/tiles/${name}${format}`);
+            const volume = AUDIO_VOLUMES[gender] || 1.0;
+            playAudioFile(`audio/${gender}/tiles/${name}${format}`, volume);
         }
         
         // 播放动作音频（支持男女声）
         function playActionAudio(action, gender = 'female') {
             const format = AUDIO_FORMATS[gender] || '.mp3';
-            playAudioFile(`audio/${gender}/actions/${action}${format}`);
+            const volume = AUDIO_VOLUMES[gender] || 1.0;
+            playAudioFile(`audio/${gender}/actions/${action}${format}`, volume);
         }
         
         // 音频懒加载队列

@@ -1225,17 +1225,25 @@
             return aiGenders[playerIndex - 1] || 'female';  // AI 性别
         }
         
+        // 音量配置（男声音量增益）
+        const AUDIO_VOLUMES = {
+            female: 1.0,
+            male: 1.8  // 男声音量增益，调大到1.8倍
+        };
+        
         // 播放牌的音频（支持男女声，注意：单人模式在 mahjong/ 子目录）
         function playTileAudio(tile, gender = 'female') {
             const name = getTileAudioName(tile);
             const format = AUDIO_FORMATS[gender] || '.mp3';
-            playAudioFile(`../audio/${gender}/tiles/${name}${format}`);
+            const volume = AUDIO_VOLUMES[gender] || 1.0;
+            playAudioFile(`../audio/${gender}/tiles/${name}${format}`, volume);
         }
         
         // 播放动作音频（支持男女声）
         function playActionAudio(action, gender = 'female') {
             const format = AUDIO_FORMATS[gender] || '.mp3';
-            playAudioFile(`../audio/${gender}/actions/${action}${format}`);
+            const volume = AUDIO_VOLUMES[gender] || 1.0;
+            playAudioFile(`../audio/${gender}/actions/${action}${format}`, volume);
         }
         
         // 预加载所有音频（可选，提升响应速度）- 男女双版本
