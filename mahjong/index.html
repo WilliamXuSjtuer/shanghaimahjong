@@ -3381,9 +3381,9 @@
             // 更新积分榜
             updateScoreboard(title);
             
-            // 显示结果、本局积分和战绩
+            // 显示结果、本局积分和战绩（HTML格式）
             const scoreInfo = getScoreboardInfo();
-            const fullMessage = message + '\n\n' + roundScores + '\n\n' + scoreInfo;
+            const fullMessage = `<div style="margin-bottom: 10px;">${message}</div>${roundScores}${scoreInfo}`;
             
             showMessage(title, fullMessage);
             updateUI();
@@ -3439,11 +3439,7 @@
                 }
             }
             
-            // 生成结算榜单
-            let text = '━━━━━━━━━━━━━━━━━━\n';
-            text += '🏆 本局结算榜单 🏆\n';
-            text += '━━━━━━━━━━━━━━━━━━\n\n';
-            
+            // 生成结算榜单（HTML表格格式）
             // 按积分排序显示
             const rankings = players.map((name, i) => ({
                 name, 
@@ -3453,24 +3449,43 @@
             }));
             rankings.sort((a, b) => b.score - a.score);
             
+            let text = '<div style="margin: 15px 0;">';
+            text += '<div style="text-align: center; font-size: 1.1rem; margin-bottom: 10px;">🏆 本局结算榜单 🏆</div>';
+            text += '<table style="width: 100%; border-collapse: collapse; font-size: 0.95rem;">';
+            text += '<thead><tr style="background: rgba(212,175,55,0.3);">';
+            text += '<th style="padding: 8px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.2);">排名</th>';
+            text += '<th style="padding: 8px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.2);">玩家</th>';
+            text += '<th style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2);">得分</th>';
+            text += '<th style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2);">花牌</th>';
+            text += '<th style="padding: 8px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.2);">称号</th>';
+            text += '</tr></thead><tbody>';
+            
             for (let rank = 0; rank < 4; rank++) {
                 const p = rankings[rank];
-                const medal = rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : '  ';
+                const medal = rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : '4️⃣';
                 const sign = p.score > 0 ? '+' : '';
-                const flower = p.flowers > 0 ? ` 🌸×${p.flowers}` : '';
+                const scoreColor = p.score > 0 ? '#2ecc71' : p.score < 0 ? '#e74c3c' : '#fff';
+                const flower = p.flowers > 0 ? `🌸×${p.flowers}` : '-';
                 
                 // 添加称号
                 let title = '';
                 if (p.index === winnerIndex) {
-                    title = isZiMo ? ' 【自摸王】' : ' 【大赢家】';
+                    title = isZiMo ? '自摸王👑' : '大赢家💰';
                 } else if (p.index === loserIndex && !isZiMo) {
-                    title = ' 【最佳炮手💥】';
+                    title = '炮手💥';
                 }
                 
-                text += `${medal} ${p.name}: ${sign}${p.score}分${flower}${title}\n`;
+                const rowBg = rank === 0 ? 'rgba(46,204,113,0.15)' : 'transparent';
+                text += `<tr style="background: ${rowBg};">`;
+                text += `<td style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">${medal}</td>`;
+                text += `<td style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">${p.name}</td>`;
+                text += `<td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); color: ${scoreColor}; font-weight: bold;">${sign}${p.score}分</td>`;
+                text += `<td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">${flower}</td>`;
+                text += `<td style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">${title}</td>`;
+                text += '</tr>';
             }
             
-            text += '\n━━━━━━━━━━━━━━━━━━\n';
+            text += '</tbody></table></div>';
             
             // 添加特殊成就
             const achievements = [];
@@ -3487,7 +3502,9 @@
             }
             
             if (achievements.length > 0) {
-                text += achievements.join('\n') + '\n';
+                text += '<div style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 8px; font-size: 0.9rem;">';
+                text += achievements.join('<br>');
+                text += '</div>';
             }
             
             return text;
@@ -3567,14 +3584,16 @@
             saveScoreboard(scoreboard);
         }
         
-        // 获取积分榜信息
+        // 获取积分榜信息（HTML格式）
         function getScoreboardInfo() {
             const s = loadScoreboard();
             const winRate = s.gamesPlayed > 0 ? Math.round(s.wins / s.gamesPlayed * 100) : 0;
             
-            return `📊 战绩统计\n` +
-                   `胜${s.wins} 负${s.losses} 平${s.draws} | 胜率${winRate}%\n` +
-                   `总积分: ${s.totalScore} | 连胜: ${s.winStreak}`;
+            return `<div style="margin-top: 15px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 8px; text-align: center;">
+                <div style="font-size: 1rem; margin-bottom: 8px;">📊 战绩统计</div>
+                <div style="font-size: 0.95rem;">胜<span style="color:#2ecc71;">${s.wins}</span> 负<span style="color:#e74c3c;">${s.losses}</span> 平${s.draws} | 胜率${winRate}%</div>
+                <div style="font-size: 0.95rem; margin-top: 5px;">总积分: <span style="color:var(--gold);font-weight:bold;">${s.totalScore}</span> | 连胜: ${s.winStreak}</div>
+            </div>`;
         }
         
         // 显示完整积分榜
@@ -3611,7 +3630,8 @@
         // modalType: 'result' = 游戏结果(继续下一局), 'start' = 游戏开始, 'ting' = 听牌提示, 'tip' = 普通提示
         function showMessage(title, message, modalType = 'result') {
             document.getElementById('modalTitle').textContent = title;
-            document.getElementById('modalMessage').textContent = message;
+            // 使用innerHTML以支持表格等HTML内容
+            document.getElementById('modalMessage').innerHTML = message;
             
             // 根据类型显示不同按钮
             const modalButtons = document.getElementById('modalButtons');
