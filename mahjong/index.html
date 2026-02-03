@@ -6,7 +6,8 @@
     <title>上海敲麻 - 哈灵规则 | AI小游戏平台</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- visitor counter disabled -->
+    <!-- 预加载关键资源 -->
+    <link rel="preload" href="img/majiang.png" as="image" type="image/png">
     <style>
         :root {
             --table-green: #1a5c3a;
@@ -314,6 +315,25 @@
         .tile.small {
             width: 32px;
             height: 45px;
+        }
+        
+        /* 牌面加载中状态 */
+        .tile.loading {
+            background-image: none;
+            background: linear-gradient(135deg, #e0d8c8 25%, #f5f0e1 50%, #e0d8c8 75%);
+            background-size: 200% 100%;
+            animation: tileLoading 1s ease-in-out infinite;
+        }
+        
+        @keyframes tileLoading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* 精灵图加载完成后移除加载状态 */
+        body.sprites-loaded .tile.loading {
+            animation: none;
+            background: #f5f0e1;
         }
 
         .tile.back {
@@ -688,13 +708,16 @@
                 </div>
             </div>
             
-            <button class="menu-btn" onclick="startGame('easy')">
+            <!-- 加载状态提示 -->
+            <p id="loadingText" style="text-align: center; margin-bottom: 10px; color: rgba(255,255,255,0.7); font-size: 0.9rem;">加载中...</p>
+            
+            <button class="menu-btn game-start" onclick="startGame('easy')" disabled style="opacity: 0.6;">
                 <i class="fas fa-play"></i> 开始游戏（简单）
             </button>
-            <button class="menu-btn" onclick="startGame('normal')">
+            <button class="menu-btn game-start" onclick="startGame('normal')" disabled style="opacity: 0.6;">
                 <i class="fas fa-gamepad"></i> 开始游戏（普通）
             </button>
-            <button class="menu-btn" onclick="startGame('hard')">
+            <button class="menu-btn game-start" onclick="startGame('hard')" disabled style="opacity: 0.6;">
                 <i class="fas fa-trophy"></i> 开始游戏（困难）
             </button>
             <button class="menu-btn" onclick="window.location.href='../mahjong-multiplayer/index.html'" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
@@ -1261,9 +1284,82 @@
             console.log('动作音频预加载完成，其他使用懒加载');
         }
         
-        // 页面加载后预加载音频
+        // ==================== 资源预加载 ====================
+        let spriteLoaded = false;
+        let loadingProgress = 0;
+        
+        // 预加载麻将牌精灵图（关键资源）
+        function preloadSprite() {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    spriteLoaded = true;
+                    loadingProgress = 100;
+                    document.body.classList.add('sprites-loaded');
+                    updateLoadingStatus();
+                    console.log('麻将牌贴图加载完成');
+                    
+                    // 应用样式到所有加载中的牌
+                    document.querySelectorAll('.tile.loading').forEach(tile => {
+                        tile.classList.remove('loading');
+                        if (tile.dataset.spriteStyle) {
+                            tile.style.cssText = tile.dataset.spriteStyle;
+                        }
+                    });
+                    
+                    resolve();
+                };
+                img.onerror = () => {
+                    console.error('麻将牌贴图加载失败，使用文字模式');
+                    spriteLoaded = true;
+                    document.body.classList.add('sprites-loaded');
+                    updateLoadingStatus();
+                    
+                    // 转换为文字模式
+                    document.querySelectorAll('.tile.loading').forEach(tile => {
+                        tile.classList.remove('loading');
+                        tile.classList.add('text-mode');
+                    });
+                    
+                    resolve();
+                };
+                // 开始加载
+                loadingProgress = 30;
+                updateLoadingStatus();
+                img.src = 'img/majiang.png';
+            });
+        }
+        
+        // 更新加载状态显示
+        function updateLoadingStatus() {
+            const btns = document.querySelectorAll('.menu-btn.game-start');
+            btns.forEach(btn => {
+                if (spriteLoaded) {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                } else {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.6';
+                }
+            });
+            
+            const loadingText = document.getElementById('loadingText');
+            if (loadingText) {
+                if (spriteLoaded) {
+                    loadingText.textContent = '✓ 资源加载完成';
+                    loadingText.style.color = '#2ecc71';
+                } else {
+                    loadingText.textContent = `加载中... ${loadingProgress}%`;
+                }
+            }
+        }
+        
+        // 页面加载后预加载资源
         document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(preloadAudio, 1000);
+            // 立即预加载精灵图（最重要）
+            preloadSprite();
+            // 延迟预加载音频
+            setTimeout(preloadAudio, 500);
         });
         
         // ==================== 语音播报（已用音频替代） ====================
@@ -1665,6 +1761,11 @@
             if (selectable && gameState.selectedTile === index) classes.push('selected');
             if (isNew) classes.push('new-tile');
             
+            // 精灵图未加载完成时显示加载状态
+            if (!spriteLoaded) {
+                classes.push('loading');
+            }
+            
             if (back) {
                 return `<div class="${classes.join(' ')}"></div>`;
             }
@@ -1673,7 +1774,11 @@
             const spritePos = getSpritePosition(tile, small);
             const onclick = selectable ? `onclick="selectTile(${index})"` : '';
             
-            return `<div class="${classes.join(' ')}" style="${spritePos}" ${onclick} title="${display.value}${display.suit}">
+            // 精灵图加载完成才应用位置样式
+            const styleAttr = spriteLoaded ? spritePos : '';
+            const dataStyle = spriteLoaded ? '' : `data-sprite-style="${spritePos}"`;
+            
+            return `<div class="${classes.join(' ')}" style="${styleAttr}" ${dataStyle} ${onclick} title="${display.value}${display.suit}">
                 <div class="tile-text">
                     <span class="tile-value">${display.value}</span>
                     <span class="tile-suit">${display.suit}</span>
