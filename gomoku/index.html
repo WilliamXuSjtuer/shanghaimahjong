@@ -460,7 +460,7 @@
             to { transform: scale(1.1); }
         }
 
-        /* 星位点 */
+        /* 星位点 - 使用CSS定位 */
         .star-point {
             position: absolute;
             width: 8px;
@@ -468,6 +468,14 @@
             background: var(--line-color);
             border-radius: 50%;
             z-index: 0;
+            pointer-events: none;
+        }
+        
+        @media (max-width: 520px) {
+            .star-point {
+                width: 6px;
+                height: 6px;
+            }
         }
 
         /* 游戏状态 */
@@ -748,8 +756,8 @@
                 }
             }
             
-            // 添加星位点
-            addStarPoints();
+            // 添加星位点（延迟确保DOM渲染完成）
+            setTimeout(addStarPoints, 50);
         }
 
         // 添加星位点
@@ -761,17 +769,20 @@
                 [11, 3], [11, 7], [11, 11]
             ];
             
-            const cellSize = boardEl.querySelector('.cell')?.offsetWidth || 30;
-            // 计算棋盘网格线的偏移量（cellSize的一半）
+            // 根据屏幕宽度判断使用的格子大小
+            const isMobile = window.innerWidth <= 520;
+            const cellSize = isMobile ? 22 : 30;
+            const starSize = isMobile ? 6 : 8;
+            // 棋盘网格线的偏移量（cellSize的一半）
             const offset = cellSize / 2;
             
             positions.forEach(([row, col]) => {
                 if (!gameBoard[row][col]) {
                     const star = document.createElement('div');
                     star.className = 'star-point';
-                    // 星位点应该在格子中心，格子中心在交叉点上
-                    star.style.left = `${col * cellSize + offset - 4}px`;
-                    star.style.top = `${row * cellSize + offset - 4}px`;
+                    // 星位点在交叉点中心
+                    star.style.left = `${col * cellSize + offset - starSize / 2}px`;
+                    star.style.top = `${row * cellSize + offset - starSize / 2}px`;
                     boardEl.appendChild(star);
                 }
             });
