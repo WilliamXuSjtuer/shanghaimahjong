@@ -756,8 +756,8 @@
                 }
             }
             
-            // 添加星位点（延迟确保DOM渲染完成）
-            setTimeout(addStarPoints, 50);
+            // 添加星位点（延迟确保DOM和CSS完全渲染）
+            setTimeout(addStarPoints, 100);
         }
 
         // 添加星位点
@@ -769,12 +769,16 @@
                 [11, 3], [11, 7], [11, 11]
             ];
             
-            // 根据屏幕宽度判断使用的格子大小
-            const isMobile = window.innerWidth <= 520;
-            const cellSize = isMobile ? 22 : 30;
-            const starSize = isMobile ? 6 : 8;
+            // 直接从实际渲染的格子获取大小（更可靠）
+            const firstCell = boardEl.querySelector('.cell');
+            if (!firstCell) return;
+            
+            const cellSize = firstCell.offsetWidth;
+            const starSize = cellSize <= 22 ? 6 : 8;
             // 棋盘网格线的偏移量（cellSize的一半）
             const offset = cellSize / 2;
+            
+            console.log('星位点计算 - cellSize:', cellSize, 'starSize:', starSize);
             
             positions.forEach(([row, col]) => {
                 if (!gameBoard[row][col]) {
