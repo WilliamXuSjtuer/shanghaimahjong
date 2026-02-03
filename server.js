@@ -761,6 +761,13 @@ class MahjongRoom {
         
         // 检查是否自摸胡牌
         if (this.canHu(player.hand, player.melds)) {
+            // 创建自摸胡牌的待处理动作
+            this.gameState.pendingZimo = {
+                playerId: player.id,
+                playerIndex: player.seatIndex,
+                tile: tile
+            };
+            
             if (player.socket) {
                 player.socket.emit('action_available', {
                     playerId: player.id,
@@ -802,6 +809,11 @@ class MahjongRoom {
         if (this.gameState.discardTimeout) {
             clearTimeout(this.gameState.discardTimeout);
             this.gameState.discardTimeout = null;
+        }
+        
+        // 清除自摸胡牌状态（玩家选择不胡而是出牌）
+        if (this.gameState.pendingZimo) {
+            this.gameState.pendingZimo = null;
         }
         
         const tileIndex = player.hand.findIndex(t => t.id === tileId);
@@ -936,6 +948,24 @@ class MahjongRoom {
     playerAction(socketId, actionType) {
         const player = this.players.find(p => p.id === socketId);
         if (!player) return { error: '玩家不存在' };
+        
+        // 处理自摸胡牌
+        if (actionType === 'hu_zimo') {
+            if (this.gameState.pendingZimo && this.gameState.pendingZimo.playerId === socketId) {
+                console.log(`玩家 ${player.username} 自摸胡牌！`);
+                // 清除超时计时器
+                if (this.gameState.discardTimeout) {
+                    clearTimeout(this.gameState.discardTimeout);
+                    this.gameState.discardTimeout = null;
+                }
+                // 执行自摸胡牌
+                this.endRound('hu', player.seatIndex, -1, true, false);
+                this.gameState.pendingZimo = null;
+                return { success: true };
+            } else {
+                return { error: '不能自摸胡牌' };
+            }
+        }
         
         const pendingAction = this.gameState.pendingActions.find(a => a.playerId === socketId);
         if (!pendingAction) {

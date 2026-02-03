@@ -1967,6 +1967,8 @@
         let isReady = false;
         let username = '';
         let lastDrawnTileId = null; // 记录刚摸的牌
+        let pendingAutoDiscard = false; // 是否等待自动出牌
+        let pendingAutoDiscardTileId = null; // 等待自动出牌的牌ID
         let myGender = 'female'; // 我的语音性别
         let playerGenders = {}; // 存储所有玩家的性别 { oderId: 'male'/'female' }
 
@@ -2711,14 +2713,23 @@
                     }
                 }
                 
-                // 听牌后自动出牌：打刚摸的牌
+                // 听牌后自动出牌：延迟执行，先等待服务器检查是否能胡牌
                 if (isTing && lastDrawnTileId) {
-                    console.log('已听牌，自动打出刚摸的牌');
-                    showToast('听牌中，自动出牌...');
+                    console.log('已听牌，等待服务器检查胡牌...');
+                    // 标记等待胡牌检查
+                    pendingAutoDiscard = true;
+                    pendingAutoDiscardTileId = lastDrawnTileId;
+                    // 延迟1.5秒后自动出牌（如果没有收到胡牌选项）
                     setTimeout(() => {
-                        selectedTileId = lastDrawnTileId;
-                        discardTile();
-                    }, 800);
+                        if (pendingAutoDiscard && pendingAutoDiscardTileId) {
+                            console.log('未收到胡牌选项，自动出牌');
+                            showToast('听牌中，自动出牌...');
+                            selectedTileId = pendingAutoDiscardTileId;
+                            discardTile();
+                            pendingAutoDiscard = false;
+                            pendingAutoDiscardTileId = null;
+                        }
+                    }, 1500);
                 }
             });
             
@@ -2749,18 +2760,26 @@
             socket.on('action_available', (data) => {
                 console.log('收到可执行动作:', data.actions);
                 
+                // 取消等待自动出牌（收到任何动作选项都应该取消）
+                pendingAutoDiscard = false;
+                pendingAutoDiscardTileId = null;
+                
+                // 检查是否可以胡牌（包括点炮胡和自摸胡）
+                const canHu = data.actions.includes('hu') || data.actions.includes('hu_zimo');
+                
                 // 自动胡牌：如果可以胡，自动执行
-                if (data.actions.includes('hu')) {
-                    console.log('可以胡牌，自动胡牌！');
-                    showToast('🎉 自动胡牌！');
+                if (canHu) {
+                    const huAction = data.actions.includes('hu_zimo') ? 'hu_zimo' : 'hu';
+                    console.log('可以胡牌，自动胡牌！动作:', huAction);
+                    showToast('🎉 自摸胡牌！');
                     setTimeout(() => {
-                        doAction('hu');
+                        doAction(huAction);
                     }, 500);
                     return;
                 }
                 
                 // 如果听牌状态，自动过（不碰不杠）
-                if (isTing && !data.actions.includes('hu')) {
+                if (isTing) {
                     console.log('已听牌，自动过');
                     setTimeout(() => {
                         doAction('pass');
