@@ -2309,19 +2309,28 @@
                 const display = getTileDisplay(tile);
                 showToast(`摸到: ${display.value}${display.suit}`);
                     
-                    // 检查是否能自摸胡牌
-                    if (canHu(gameState.players[0].hand)) {
-                        showMessage('🎊 自摸！', '你可以胡牌了！点击"胡牌"按钮', 'tip');
-                return;
-            }
-            
-                    // 如果已经听牌，自动打出刚摸的牌
-                    if (gameState.isTing) {
-                        setTimeout(() => {
-                            autoDiscardDrawnTile(tile);
-                        }, 800);
+                // 检查是否能自摸胡牌
+                if (canHu(gameState.players[0].hand)) {
+                    showMessage('🎊 自摸！', '你可以胡牌了！点击"胡牌"按钮', 'tip');
+                    return;
+                }
+                
+                // 检查是否可以暗杠或加杠（非听牌状态）
+                if (!gameState.isTing) {
+                    const gangList = checkSelfGang();
+                    if (gangList.length > 0) {
+                        showSelfGangHints(gangList);
+                        // 不return，玩家可以选择杠或继续出牌
                     }
                 }
+            
+                // 如果已经听牌，自动打出刚摸的牌
+                if (gameState.isTing) {
+                    setTimeout(() => {
+                        autoDiscardDrawnTile(tile);
+                    }, 800);
+                }
+            }
             }, 300);
         }
         
@@ -2661,22 +2670,177 @@
             return false;
         }
 
+        // 检查暗杠（手里有4张相同的牌）
         function checkAnGang() {
-            // 检查暗杠
             const hand = gameState.players[0].hand;
             const counts = {};
+            const tiles = {};
             
             hand.forEach(tile => {
                 const key = tileKey(tile);
                 counts[key] = (counts[key] || 0) + 1;
+                tiles[key] = tile;
             });
             
+            const anGangList = [];
             for (const key in counts) {
                 if (counts[key] === 4) {
-                    // 有暗杠机会，这里可以添加提示
-                    break;
+                    anGangList.push({ key, tile: tiles[key], type: 'angang' });
                 }
             }
+            return anGangList;
+        }
+        
+        // 检查加杠（已碰的牌摸到第4张）
+        function checkJiaGang() {
+            const hand = gameState.players[0].hand;
+            const melds = gameState.players[0].melds;
+            const jiaGangList = [];
+            
+            // 找出所有碰的牌
+            melds.forEach((meld, meldIndex) => {
+                if (meld.type === 'peng') {
+                    const pengKey = tileKey(meld.tiles[0]);
+                    // 检查手牌中是否有这张牌
+                    hand.forEach((tile, tileIndex) => {
+                        if (tileKey(tile) === pengKey) {
+                            jiaGangList.push({ 
+                                key: pengKey, 
+                                tile: tile, 
+                                type: 'jiagang',
+                                meldIndex: meldIndex,
+                                tileIndex: tileIndex
+                            });
+                        }
+                    });
+                }
+            });
+            return jiaGangList;
+        }
+        
+        // 检查玩家摸牌后是否可以杠
+        function checkSelfGang() {
+            const anGang = checkAnGang();
+            const jiaGang = checkJiaGang();
+            return [...anGang, ...jiaGang];
+        }
+        
+        // 显示摸牌后的杠选项
+        function showSelfGangHints(gangList) {
+            if (gangList.length === 0) return false;
+            
+            gameState.pendingGangList = gangList;
+            
+            const actionHints = document.getElementById('actionHints');
+            const pengBtn = document.getElementById('pengBtn');
+            const gangBtn = document.getElementById('gangBtn');
+            const huBtn2 = document.getElementById('huBtn2');
+            const passBtn = document.getElementById('passBtn');
+            
+            pengBtn.style.display = 'none';
+            huBtn2.style.display = 'none';
+            gangBtn.style.display = 'inline-block';
+            gangBtn.textContent = gangList[0].type === 'angang' ? '暗杠' : '加杠';
+            passBtn.style.display = 'inline-block';
+            passBtn.textContent = '不杠';
+            
+            actionHints.style.display = 'flex';
+            gameState.waitingForSelfGang = true;
+            
+            return true;
+        }
+        
+        // 执行暗杠
+        function doAnGang(gangInfo) {
+            const player = gameState.players[0];
+            const gangKey = gangInfo.key;
+            
+            // 从手牌中移除4张相同的牌
+            const gangTiles = [];
+            player.hand = player.hand.filter(tile => {
+                if (tileKey(tile) === gangKey && gangTiles.length < 4) {
+                    gangTiles.push(tile);
+                    return false;
+                }
+                return true;
+            });
+            
+            // 添加到副露区（暗杠）
+            player.melds.push({
+                type: 'gang',
+                tiles: gangTiles,
+                isAnGang: true
+            });
+            
+            speakGang(gangTiles[0]);
+            const display = getTileDisplay(gangTiles[0]);
+            showToast(`暗杠！${display.value}${display.suit} 补牌中...`);
+            
+            updateUI();
+            
+            // 杠后补牌
+            setTimeout(() => playerAutoDrawTile(), 500);
+        }
+        
+        // 执行加杠
+        function doJiaGang(gangInfo) {
+            const player = gameState.players[0];
+            
+            // 从手牌中移除这张牌
+            player.hand.splice(gangInfo.tileIndex, 1);
+            
+            // 将碰变成杠
+            const meld = player.melds[gangInfo.meldIndex];
+            meld.type = 'gang';
+            meld.tiles.push(gangInfo.tile);
+            meld.isJiaGang = true;
+            
+            speakGang(gangInfo.tile);
+            const display = getTileDisplay(gangInfo.tile);
+            showToast(`加杠！${display.value}${display.suit} 补牌中...`);
+            
+            updateUI();
+            
+            // 杠后补牌
+            setTimeout(() => playerAutoDrawTile(), 500);
+        }
+        
+        // 执行自摸杠（暗杠或加杠）
+        function doSelfGang() {
+            if (!gameState.pendingGangList || gameState.pendingGangList.length === 0) return;
+            
+            const gangInfo = gameState.pendingGangList[0];
+            
+            hideActionHints();
+            gameState.waitingForSelfGang = false;
+            gameState.pendingGangList = null;
+            
+            if (gangInfo.type === 'angang') {
+                doAnGang(gangInfo);
+            } else {
+                doJiaGang(gangInfo);
+            }
+        }
+        
+        // 跳过自摸杠
+        function skipSelfGang() {
+            hideActionHints();
+            gameState.waitingForSelfGang = false;
+            gameState.pendingGangList = null;
+            // 恢复正常出牌流程
+        }
+        
+        // 隐藏操作提示
+        function hideActionHints() {
+            const actionHints = document.getElementById('actionHints');
+            if (actionHints) {
+                actionHints.style.display = 'none';
+            }
+            // 恢复按钮文字
+            const gangBtn = document.getElementById('gangBtn');
+            const passBtn = document.getElementById('passBtn');
+            if (gangBtn) gangBtn.textContent = '杠';
+            if (passBtn) passBtn.textContent = '过';
         }
 
         function tileKey(tile) {
@@ -3152,14 +3316,26 @@
             document.getElementById('actionHints').style.display = 'none';
             
             if (action === 'pass') {
-                // 过 - 继续下一个玩家
-                continueToNextPlayer();
+                // 过
+                if (gameState.waitingForSelfGang) {
+                    // 跳过自摸杠，继续出牌
+                    skipSelfGang();
+                } else {
+                    // 继续下一个玩家
+                    continueToNextPlayer();
+                }
             } else if (action === 'peng') {
                 // 碰
                 doPeng();
             } else if (action === 'gang') {
                 // 杠
-                doGang();
+                if (gameState.waitingForSelfGang) {
+                    // 自摸杠（暗杠或加杠）
+                    doSelfGang();
+                } else {
+                    // 明杠（别人打的牌）
+                    doGang();
+                }
             } else if (action === 'hu') {
                 // 点炮胡
                 doDianPaoHu();
