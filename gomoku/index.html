@@ -1231,13 +1231,33 @@
                     slot.innerHTML = `
                         <div class="player-info">
                             <div class="player-stone ${colors[i]}"></div>
-                            <span class="player-name" style="color: rgba(255,255,255,0.4);">等待玩家...</span>
+                            <span class="player-name" style="color: rgba(255,255,255,0.4);">等待玩家加入...</span>
                         </div>
                         <span class="player-status">${labels[i]}</span>
                     `;
                 }
                 
                 container.appendChild(slot);
+            }
+            
+            // 控制准备按钮状态：只有两个玩家都在时才能准备
+            const readyBtn = document.getElementById('readyBtn');
+            if (players.length < 2) {
+                readyBtn.disabled = true;
+                readyBtn.style.opacity = '0.5';
+                readyBtn.innerHTML = '<i class="fas fa-hourglass-half"></i> 等待对手加入';
+                // 如果之前点了准备，重置状态
+                if (isReady) {
+                    isReady = false;
+                    socket.emit('toggle_ready', { ready: false });
+                }
+            } else {
+                readyBtn.disabled = false;
+                readyBtn.style.opacity = '1';
+                if (!isReady) {
+                    readyBtn.innerHTML = '<i class="fas fa-check"></i> 准备';
+                    readyBtn.classList.remove('secondary');
+                }
             }
         }
 
@@ -1276,15 +1296,25 @@
             switchScreen('lobbyScreen');
             currentRoom = null;
             isReady = false;
-            document.getElementById('readyBtn').innerHTML = '<i class="fas fa-check"></i> 准备';
+            const btn = document.getElementById('readyBtn');
+            btn.innerHTML = '<i class="fas fa-check"></i> 准备';
+            btn.classList.remove('secondary');
+            btn.disabled = false;
+            btn.style.opacity = '1';
         }
 
         // 切换准备状态
         function toggleReady() {
+            // 只有按钮可用时才能切换
+            const btn = document.getElementById('readyBtn');
+            if (btn.disabled) {
+                showToast('请等待对手加入');
+                return;
+            }
+            
             isReady = !isReady;
             socket.emit('toggle_ready', { ready: isReady });
             
-            const btn = document.getElementById('readyBtn');
             if (isReady) {
                 btn.innerHTML = '<i class="fas fa-times"></i> 取消准备';
                 btn.classList.add('secondary');
