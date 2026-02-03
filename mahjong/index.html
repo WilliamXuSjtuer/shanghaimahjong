@@ -2318,9 +2318,13 @@
                 // 检查是否可以暗杠或加杠（非听牌状态）
                 if (!gameState.isTing) {
                     const gangList = checkSelfGang();
+                    console.log('检查杠牌机会:', gangList);
                     if (gangList.length > 0) {
+                        const gangInfo = gangList[0];
+                        const display = getTileDisplay(gangInfo.tile);
+                        console.log('可以杠:', gangInfo.type, display.value + display.suit);
                         showSelfGangHints(gangList);
-                        // 不return，玩家可以选择杠或继续出牌
+                        return; // 等待玩家选择杠或不杠
                     }
                 }
             
@@ -2698,11 +2702,13 @@
             const jiaGangList = [];
             
             // 找出所有碰的牌
-            melds.forEach((meld, meldIndex) => {
+            for (let meldIndex = 0; meldIndex < melds.length; meldIndex++) {
+                const meld = melds[meldIndex];
                 if (meld.type === 'peng') {
                     const pengKey = tileKey(meld.tiles[0]);
                     // 检查手牌中是否有这张牌
-                    hand.forEach((tile, tileIndex) => {
+                    for (let tileIndex = 0; tileIndex < hand.length; tileIndex++) {
+                        const tile = hand[tileIndex];
                         if (tileKey(tile) === pengKey) {
                             jiaGangList.push({ 
                                 key: pengKey, 
@@ -2711,10 +2717,11 @@
                                 meldIndex: meldIndex,
                                 tileIndex: tileIndex
                             });
+                            break; // 只需要找到一张即可
                         }
-                    });
+                    }
                 }
-            });
+            }
             return jiaGangList;
         }
         

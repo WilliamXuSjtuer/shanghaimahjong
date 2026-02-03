@@ -762,13 +762,16 @@
             ];
             
             const cellSize = boardEl.querySelector('.cell')?.offsetWidth || 30;
+            // 计算棋盘网格线的偏移量（cellSize的一半）
+            const offset = cellSize / 2;
             
             positions.forEach(([row, col]) => {
                 if (!gameBoard[row][col]) {
                     const star = document.createElement('div');
                     star.className = 'star-point';
-                    star.style.left = `${col * cellSize + cellSize / 2 - 4}px`;
-                    star.style.top = `${row * cellSize + cellSize / 2 - 4}px`;
+                    // 星位点应该在格子中心，格子中心在交叉点上
+                    star.style.left = `${col * cellSize + offset - 4}px`;
+                    star.style.top = `${row * cellSize + offset - 4}px`;
                     boardEl.appendChild(star);
                 }
             });
