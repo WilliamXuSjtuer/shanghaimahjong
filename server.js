@@ -1764,9 +1764,352 @@ setInterval(() => {
     }
 }, 60000);
 
+// ==================== 五子棋游戏逻辑 ====================
+
+// 五子棋房间管理
+const gomokuRooms = new Map();
+const gomokuPlayerSockets = new Map();
+
+// 生成6位房间号（五子棋专用，避免与麻将冲突）
+function generateGomokuRoomCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'G'; // G开头表示五子棋
+    for (let i = 0; i < 5; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+// 五子棋房间类
+class GomokuRoom {
+    constructor(code, hostId, hostName) {
+        this.code = code;
+        this.players = [];
+        this.board = null;
+        this.gameRunning = false;
+        this.currentTurn = 'black';
+        this.createdAt = Date.now();
+        console.log(`[五子棋] 房间 ${code} 已创建，房主: ${hostName}`);
+    }
+
+    addPlayer(socket, username) {
+        if (this.players.length >= 2) return null;
+        
+        const player = {
+            id: socket.id,
+            username: username,
+            socket: socket,
+            ready: false,
+            color: this.players.length === 0 ? 'black' : 'white'
+        };
+        
+        this.players.push(player);
+        gomokuPlayerSockets.set(socket.id, this);
+        
+        console.log(`[五子棋] 玩家 ${username} 加入房间 ${this.code}，执${player.color === 'black' ? '黑' : '白'}子`);
+        this.broadcastRoomUpdate();
+        return player;
+    }
+
+    removePlayer(socketId) {
+        const playerIndex = this.players.findIndex(p => p.id === socketId);
+        if (playerIndex !== -1) {
+            const player = this.players[playerIndex];
+            this.players.splice(playerIndex, 1);
+            gomokuPlayerSockets.delete(socketId);
+            
+            console.log(`[五子棋] 玩家 ${player.username} 离开房间 ${this.code}`);
+            
+            if (this.gameRunning) {
+                this.broadcast('opponent_left', {});
+            }
+            
+            this.gameRunning = false;
+            
+            if (this.players.length === 1) {
+                this.players[0].color = 'black';
+                this.players[0].ready = false;
+            }
+            
+            if (this.players.length === 0) {
+                gomokuRooms.delete(this.code);
+                console.log(`[五子棋] 房间 ${this.code} 已解散`);
+            } else {
+                this.broadcastRoomUpdate();
+            }
+        }
+    }
+
+    setPlayerReady(socketId, ready) {
+        const player = this.players.find(p => p.id === socketId);
+        if (player) {
+            player.ready = ready;
+            this.broadcastRoomUpdate();
+            
+            if (this.players.length === 2 && this.players.every(p => p.ready)) {
+                this.startGame();
+            }
+        }
+    }
+
+    startGame() {
+        this.gameRunning = true;
+        this.board = Array(15).fill(null).map(() => Array(15).fill(null));
+        this.currentTurn = 'black';
+        
+        // 随机分配颜色
+        if (Math.random() > 0.5) {
+            [this.players[0].color, this.players[1].color] = 
+            [this.players[1].color, this.players[0].color];
+        }
+        
+        const blackPlayer = this.players.find(p => p.color === 'black');
+        const whitePlayer = this.players.find(p => p.color === 'white');
+        
+        this.players.forEach(player => {
+            player.socket.emit('game_started', {
+                yourColor: player.color,
+                blackPlayer: blackPlayer.username,
+                whitePlayer: whitePlayer.username
+            });
+        });
+        
+        console.log(`[五子棋] 房间 ${this.code} 游戏开始！黑方: ${blackPlayer.username}, 白方: ${whitePlayer.username}`);
+    }
+
+    placeStone(socketId, row, col) {
+        const player = this.players.find(p => p.id === socketId);
+        if (!player) return { error: '玩家不存在' };
+        if (!this.gameRunning) return { error: '游戏未开始' };
+        if (player.color !== this.currentTurn) return { error: '还没轮到你' };
+        if (this.board[row][col]) return { error: '这里已经有棋子了' };
+        
+        this.board[row][col] = player.color;
+        
+        this.broadcast('stone_placed', {
+            row, col,
+            color: player.color,
+            nextColor: player.color === 'black' ? 'white' : 'black'
+        });
+        
+        const winResult = this.checkWin(row, col, player.color);
+        if (winResult.win) {
+            this.gameRunning = false;
+            this.broadcast('game_over', {
+                winner: player.color,
+                winnerName: player.username,
+                winningCells: winResult.cells
+            });
+            console.log(`[五子棋] 房间 ${this.code} 游戏结束，${player.username} 获胜！`);
+            return { success: true, gameOver: true };
+        }
+        
+        if (this.isBoardFull()) {
+            this.gameRunning = false;
+            this.broadcast('game_over', { winner: null, draw: true });
+            return { success: true, gameOver: true, draw: true };
+        }
+        
+        this.currentTurn = this.currentTurn === 'black' ? 'white' : 'black';
+        return { success: true };
+    }
+
+    checkWin(row, col, color) {
+        const directions = [
+            [[0, 1], [0, -1]], [[1, 0], [-1, 0]],
+            [[1, 1], [-1, -1]], [[1, -1], [-1, 1]]
+        ];
+        
+        for (const [dir1, dir2] of directions) {
+            let count = 1;
+            const cells = [[row, col]];
+            
+            let r = row + dir1[0], c = col + dir1[1];
+            while (r >= 0 && r < 15 && c >= 0 && c < 15 && this.board[r][c] === color) {
+                count++; cells.push([r, c]);
+                r += dir1[0]; c += dir1[1];
+            }
+            
+            r = row + dir2[0]; c = col + dir2[1];
+            while (r >= 0 && r < 15 && c >= 0 && c < 15 && this.board[r][c] === color) {
+                count++; cells.push([r, c]);
+                r += dir2[0]; c += dir2[1];
+            }
+            
+            if (count >= 5) return { win: true, cells };
+        }
+        return { win: false };
+    }
+
+    isBoardFull() {
+        for (let row = 0; row < 15; row++) {
+            for (let col = 0; col < 15; col++) {
+                if (!this.board[row][col]) return false;
+            }
+        }
+        return true;
+    }
+
+    restartGame() {
+        this.board = Array(15).fill(null).map(() => Array(15).fill(null));
+        this.gameRunning = true;
+        
+        this.players.forEach(p => {
+            p.color = p.color === 'black' ? 'white' : 'black';
+        });
+        
+        this.currentTurn = 'black';
+        
+        const blackPlayer = this.players.find(p => p.color === 'black');
+        const whitePlayer = this.players.find(p => p.color === 'white');
+        
+        this.players.forEach(player => {
+            player.socket.emit('game_restarted', {
+                yourColor: player.color,
+                blackPlayer: blackPlayer.username,
+                whitePlayer: whitePlayer.username
+            });
+        });
+    }
+
+    broadcastRoomUpdate() {
+        const roomInfo = {
+            code: this.code,
+            players: this.players.map(p => ({
+                username: p.username,
+                color: p.color,
+                ready: p.ready
+            }))
+        };
+        this.broadcast('room_updated', roomInfo);
+    }
+
+    broadcast(event, data) {
+        this.players.forEach(player => {
+            if (player.socket) player.socket.emit(event, data);
+        });
+    }
+}
+
+// 五子棋 Socket.IO 命名空间
+const gomokuIO = io.of('/gomoku');
+
+gomokuIO.on('connection', (socket) => {
+    console.log('[五子棋] 新连接:', socket.id);
+
+    socket.on('create_room', (data) => {
+        const { username } = data;
+        let code;
+        do {
+            code = generateGomokuRoomCode();
+        } while (gomokuRooms.has(code));
+        
+        const room = new GomokuRoom(code, socket.id, username);
+        gomokuRooms.set(code, room);
+        room.addPlayer(socket, username);
+        
+        socket.emit('room_created', { 
+            roomCode: code,
+            players: room.players.map(p => ({
+                username: p.username, color: p.color, ready: p.ready
+            }))
+        });
+    });
+
+    socket.on('join_room', (data) => {
+        const { roomCode, username } = data;
+        const code = roomCode.toUpperCase().trim();
+        const room = gomokuRooms.get(code);
+        
+        if (!room) {
+            socket.emit('join_error', { message: '房间不存在' });
+            return;
+        }
+        if (room.players.length >= 2) {
+            socket.emit('join_error', { message: '房间已满' });
+            return;
+        }
+        if (room.gameRunning) {
+            socket.emit('join_error', { message: '游戏已开始' });
+            return;
+        }
+        
+        room.addPlayer(socket, username);
+        socket.emit('room_joined', { 
+            roomCode: room.code,
+            players: room.players.map(p => ({
+                username: p.username, color: p.color, ready: p.ready
+            }))
+        });
+    });
+
+    socket.on('toggle_ready', (data) => {
+        const room = gomokuPlayerSockets.get(socket.id);
+        if (room) room.setPlayerReady(socket.id, data.ready);
+    });
+
+    socket.on('leave_room', () => {
+        const room = gomokuPlayerSockets.get(socket.id);
+        if (room) room.removePlayer(socket.id);
+    });
+
+    socket.on('place_stone', (data) => {
+        const room = gomokuPlayerSockets.get(socket.id);
+        if (room && room.gameRunning) {
+            const result = room.placeStone(socket.id, data.row, data.col);
+            if (result.error) {
+                socket.emit('action_error', { message: result.error });
+            }
+        }
+    });
+
+    socket.on('play_again', () => {
+        const room = gomokuPlayerSockets.get(socket.id);
+        if (room && room.players.length === 2) {
+            const opponent = room.players.find(p => p.id !== socket.id);
+            if (opponent && opponent.socket) {
+                opponent.socket.emit('play_again_request', {});
+            }
+        }
+    });
+
+    socket.on('play_again_accept', () => {
+        const room = gomokuPlayerSockets.get(socket.id);
+        if (room) room.restartGame();
+    });
+
+    socket.on('play_again_reject', () => {
+        const room = gomokuPlayerSockets.get(socket.id);
+        if (room) {
+            const requester = room.players.find(p => p.id !== socket.id);
+            if (requester && requester.socket) {
+                requester.socket.emit('play_again_rejected', {});
+            }
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('[五子棋] 断开连接:', socket.id);
+        const room = gomokuPlayerSockets.get(socket.id);
+        if (room) room.removePlayer(socket.id);
+    });
+});
+
+// 定期清理五子棋空房间
+setInterval(() => {
+    const now = Date.now();
+    for (const [code, room] of gomokuRooms) {
+        if (room.players.length === 0 || now - room.createdAt > 3600000) {
+            gomokuRooms.delete(code);
+            console.log(`[五子棋] 清理过期房间: ${code}`);
+        }
+    }
+}, 60000);
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🀄 麻将多人服务器运行在端口 ${PORT}`);
+    console.log(`⚫ 五子棋多人服务器运行在端口 ${PORT} (命名空间: /gomoku)`);
     console.log(`🌐 打开浏览器访问: http://localhost:${PORT}`);
 });
 

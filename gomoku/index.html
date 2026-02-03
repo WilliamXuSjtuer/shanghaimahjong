@@ -1118,11 +1118,10 @@
 
         // 连接服务器
         function connectServer() {
-            const serverUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                ? `http://${window.location.hostname}:3001`
-                : window.location.origin;
+            // 连接到主服务器的 /gomoku 命名空间
+            const serverUrl = window.location.origin;
             
-            socket = io(serverUrl, {
+            socket = io(serverUrl + '/gomoku', {
                 transports: ['websocket', 'polling']
             });
             
