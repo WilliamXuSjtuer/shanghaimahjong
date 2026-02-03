@@ -237,11 +237,16 @@
         }
 
         .room-code {
-            font-family: 'Ma Shan Zheng', cursive;
-            font-size: 3rem;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 2.8rem;
+            font-weight: bold;
             color: var(--gold);
-            letter-spacing: 8px;
+            letter-spacing: 6px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.3);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 2px solid var(--gold);
         }
 
         .room-code-label {
@@ -1248,7 +1253,7 @@
         /* 响应式 - 平板 */
         @media (max-width: 768px) {
             .lobby-title { font-size: 2.5rem; }
-            .room-code { font-size: 2rem; letter-spacing: 4px; }
+            .room-code { font-size: 1.8rem; letter-spacing: 4px; padding: 8px 15px; }
             .players-grid { grid-template-columns: 1fr; }
             .tile { width: 36px; height: 50px; }
             .tile.small { width: 22px; height: 31px; }
