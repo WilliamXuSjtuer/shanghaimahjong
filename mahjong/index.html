@@ -2368,24 +2368,25 @@
                 
                 const display = getTileDisplay(tile);
                 showToast(`摸到: ${display.value}${display.suit}`);
+                
+                // 先检查杠牌机会（非听牌状态）
+                // 即使能胡牌也先检查杠，让玩家选择是杠还是胡
+                if (!gameState.isTing) {
+                    const gangList = checkSelfGang();
+                    console.log('检查杠牌机会:', gangList, '手牌数:', gameState.players[0].hand.length);
+                    if (gangList.length > 0) {
+                        const gangInfo = gangList[0];
+                        const gangDisplay = getTileDisplay(gangInfo.tile);
+                        console.log('可以杠:', gangInfo.type, gangDisplay.value + gangDisplay.suit);
+                        showSelfGangHints(gangList);
+                        return; // 等待玩家选择杠或不杠
+                    }
+                }
                     
                 // 检查是否能自摸胡牌
                 if (canHu(gameState.players[0].hand)) {
                     showMessage('🎊 自摸！', '你可以胡牌了！点击"胡牌"按钮', 'tip');
                     return;
-                }
-                
-                // 检查是否可以暗杠或加杠（非听牌状态）
-                if (!gameState.isTing) {
-                    const gangList = checkSelfGang();
-                    console.log('检查杠牌机会:', gangList);
-                    if (gangList.length > 0) {
-                        const gangInfo = gangList[0];
-                        const display = getTileDisplay(gangInfo.tile);
-                        console.log('可以杠:', gangInfo.type, display.value + display.suit);
-                        showSelfGangHints(gangList);
-                        return; // 等待玩家选择杠或不杠
-                    }
                 }
             
                 // 如果已经听牌，自动打出刚摸的牌
@@ -2746,9 +2747,13 @@
                 tiles[key] = tile;
             });
             
+            // 调试日志
+            console.log('暗杠检查 - 手牌统计:', counts);
+            
             const anGangList = [];
             for (const key in counts) {
-                if (counts[key] === 4) {
+                if (counts[key] >= 4) {  // >= 4 更安全
+                    console.log('发现暗杠:', key, counts[key] + '张');
                     anGangList.push({ key, tile: tiles[key], type: 'angang' });
                 }
             }
