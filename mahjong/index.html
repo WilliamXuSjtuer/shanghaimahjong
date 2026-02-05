@@ -2331,8 +2331,8 @@
                 // 轮到玩家，自动摸牌
                 playerAutoDrawTile();
             } else {
-                // AI回合
-                setTimeout(() => aiTurn(), 600);
+                // AI回合（延迟足够让语音播放完）
+                setTimeout(() => aiTurn(), 1200);
             }
         }
         
@@ -2953,7 +2953,7 @@
                 updateUI();
                 
                 // AI继续摸牌直到非花牌
-                setTimeout(() => aiTurn(), 400);
+                setTimeout(() => aiTurn(), 800);
                 return;
             }
             
@@ -3435,7 +3435,7 @@
             if (gameState.currentPlayer === 0) {
                 playerAutoDrawTile();
             } else {
-                setTimeout(() => aiTurn(), 600);
+                setTimeout(() => aiTurn(), 1200);
             }
         }
 
