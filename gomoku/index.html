@@ -1432,7 +1432,7 @@
         
         // 请求悔棋
         function requestUndo() {
-            console.log('悔棋按钮点击，isAIMode:', isAIMode);
+            console.log('悔棋按钮点击，isAIMode:', isAIMode, 'moveHistory:', moveHistory.length);
             
             if (isAIMode) {
                 // AI模式：直接悔棋
@@ -1441,12 +1441,25 @@
                     return;
                 }
                 
-                if (moveHistory.length < 2) {
-                    showToast('没有可以悔的棋');
+                // 检查是否有棋可悔
+                if (moveHistory.length === 0) {
+                    showToast('还没有落子，无法悔棋');
                     return;
                 }
                 
-                // 撤销自己和AI的最后一步
+                // 如果只有自己落了一子（还没有AI回合），只撤销自己的
+                if (moveHistory.length === 1) {
+                    const myMove = moveHistory.pop();
+                    undoStone(myMove.row, myMove.col);
+                    undoUsed = true;
+                    updateUndoButton({ [myColor]: true });
+                    isMyTurn = true;
+                    updateTurnDisplay();
+                    showToast('悔棋成功！');
+                    return;
+                }
+                
+                // 正常情况：撤销自己和AI的最后一步
                 const aiMove = moveHistory.pop();
                 const myMove = moveHistory.pop();
                 
@@ -1461,13 +1474,17 @@
                 showToast('悔棋成功！');
             } else {
                 // 联机模式：发送悔棋请求
-                if (!socket || !socket.connected) {
+                if (!socket) {
                     showToast('未连接到服务器');
+                    return;
+                }
+                if (!socket.connected) {
+                    showToast('服务器连接已断开');
                     return;
                 }
                 console.log('发送悔棋请求到服务器');
                 socket.emit('request_undo');
-                showToast('已发送悔棋请求，等待对方回应...');
+                showToast('悔棋请求已发送，等待对方回应...');
             }
         }
         
