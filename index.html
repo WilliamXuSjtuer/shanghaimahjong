@@ -1566,6 +1566,471 @@
                 will-change: auto;
             }
         }
+        
+        /* ==================== UI/UX 改进 - 动画效果 ==================== */
+        
+        /* 出牌飞行动画 */
+        @keyframes discardFly {
+            0% {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(0.8) translateY(-100px);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(0.6) translateY(-200px);
+                opacity: 0;
+            }
+        }
+        
+        .tile.discarding {
+            animation: discardFly 0.5s ease-out forwards;
+            pointer-events: none;
+        }
+        
+        /* 摸牌滑入动画 */
+        @keyframes drawSlide {
+            0% {
+                transform: translateX(100px) scale(0.5);
+                opacity: 0;
+            }
+            60% {
+                transform: translateX(-10px) scale(1.1);
+            }
+            100% {
+                transform: translateX(0) scale(1);
+                opacity: 1;
+            }
+        }
+        
+        .tile.drawing {
+            animation: drawSlide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        
+        /* 碰/杠/胡 动作特效 */
+        .action-effect {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 8000;
+            pointer-events: none;
+        }
+        
+        .action-effect-text {
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 120px;
+            font-weight: bold;
+            text-shadow: 0 0 30px currentColor, 0 0 60px currentColor;
+            animation: actionPop 1s ease-out forwards;
+        }
+        
+        .action-effect-text.peng {
+            color: #3498db;
+        }
+        
+        .action-effect-text.gang {
+            color: #9b59b6;
+        }
+        
+        .action-effect-text.hu, .action-effect-text.zimo {
+            color: #FFD700;
+            animation: actionPop 1.5s ease-out forwards, huGlow 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes actionPop {
+            0% {
+                transform: scale(0) rotate(-10deg);
+                opacity: 0;
+            }
+            30% {
+                transform: scale(1.3) rotate(5deg);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1) rotate(-2deg);
+            }
+            100% {
+                transform: scale(1.1) rotate(0deg);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes huGlow {
+            0%, 100% {
+                text-shadow: 0 0 30px #FFD700, 0 0 60px #FFD700, 0 0 90px #FF8C00;
+            }
+            50% {
+                text-shadow: 0 0 50px #FFD700, 0 0 100px #FFD700, 0 0 150px #FF8C00;
+            }
+        }
+        
+        /* 烟花容器 */
+        .fireworks-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 7500;
+            overflow: hidden;
+        }
+        
+        /* 单个烟花 */
+        .firework {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: fireworkExplode 1.5s ease-out forwards;
+        }
+        
+        @keyframes fireworkExplode {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+        
+        /* 烟花粒子 */
+        .firework-particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            animation: particleFly 1.2s ease-out forwards;
+        }
+        
+        @keyframes particleFly {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0);
+            }
+            100% {
+                opacity: 0;
+                transform: var(--particle-end);
+            }
+        }
+        
+        /* 轮到自己时的边框发光 */
+        .my-hand-area.my-turn {
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.8), 
+                        inset 0 0 20px rgba(212, 175, 55, 0.3);
+            border: 2px solid var(--gold);
+            animation: myTurnPulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes myTurnPulse {
+            0%, 100% {
+                box-shadow: 0 0 30px rgba(212, 175, 55, 0.8), 
+                            inset 0 0 20px rgba(212, 175, 55, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 50px rgba(212, 175, 55, 1), 
+                            inset 0 0 30px rgba(212, 175, 55, 0.5);
+            }
+        }
+        
+        /* 轮到自己时的提示文字 */
+        .turn-indicator {
+            position: fixed;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.9), rgba(184, 134, 11, 0.9));
+            color: #1a1a1a;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 1.5rem;
+            font-weight: bold;
+            z-index: 1500;
+            animation: turnIndicatorBounce 0.6s ease-out, turnIndicatorPulse 2s ease-in-out infinite 0.6s;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            display: none;
+        }
+        
+        .turn-indicator.active {
+            display: block;
+        }
+        
+        @keyframes turnIndicatorBounce {
+            0% {
+                transform: translateX(-50%) translateY(-30px);
+                opacity: 0;
+            }
+            60% {
+                transform: translateX(-50%) translateY(5px);
+            }
+            100% {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes turnIndicatorPulse {
+            0%, 100% {
+                transform: translateX(-50%) scale(1);
+            }
+            50% {
+                transform: translateX(-50%) scale(1.05);
+            }
+        }
+        
+        /* 快捷表情面板 */
+        .emoji-panel {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid var(--gold);
+            border-radius: 15px;
+            padding: 15px;
+            z-index: 800;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 280px;
+        }
+        
+        .emoji-panel.active {
+            display: flex;
+            animation: panelSlideUp 0.3s ease-out;
+        }
+        
+        @keyframes panelSlideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .emoji-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .emoji-panel-header h4 {
+            color: var(--gold);
+            margin: 0;
+            font-family: 'Ma Shan Zheng', cursive;
+        }
+        
+        .emoji-panel-close {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.6);
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        
+        .emoji-btn {
+            width: 50px;
+            height: 50px;
+            font-size: 1.8rem;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .emoji-btn:hover {
+            background: rgba(212, 175, 55, 0.3);
+            border-color: var(--gold);
+            transform: scale(1.1);
+        }
+        
+        .emoji-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .quick-phrases {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .phrase-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #fff;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        
+        .phrase-btn:hover {
+            background: rgba(212, 175, 55, 0.3);
+            border-color: var(--gold);
+        }
+        
+        /* 表情按钮（悬浮） */
+        .emoji-toggle-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            color: white;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 700;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        
+        body.in-game .emoji-toggle-btn {
+            display: flex;
+        }
+        
+        .emoji-toggle-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        /* 表情气泡显示 */
+        .emoji-bubble {
+            position: absolute;
+            font-size: 2.5rem;
+            animation: emojiBubble 2s ease-out forwards;
+            pointer-events: none;
+            z-index: 6000;
+        }
+        
+        @keyframes emojiBubble {
+            0% {
+                transform: scale(0) translateY(0);
+                opacity: 0;
+            }
+            20% {
+                transform: scale(1.2) translateY(-10px);
+                opacity: 1;
+            }
+            80% {
+                transform: scale(1) translateY(-30px);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0.8) translateY(-50px);
+                opacity: 0;
+            }
+        }
+        
+        /* 背景粒子效果 */
+        .particles-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            overflow: hidden;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(212, 175, 55, 0.3);
+            border-radius: 50%;
+            animation: floatParticle linear infinite;
+        }
+        
+        @keyframes floatParticle {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-10vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        /* 牌面点击波纹效果 */
+        .tile-ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(212, 175, 55, 0.4);
+            transform: scale(0);
+            animation: ripple 0.6s ease-out;
+            pointer-events: none;
+        }
+        
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        /* 手机端调整 */
+        @media (max-width: 768px) {
+            .emoji-toggle-btn {
+                bottom: 15px;
+                right: 70px;
+                width: 45px;
+                height: 45px;
+            }
+            
+            .emoji-panel {
+                bottom: 70px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+            
+            .action-effect-text {
+                font-size: 80px;
+            }
+            
+            .turn-indicator {
+                font-size: 1.2rem;
+                padding: 10px 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1579,6 +2044,46 @@
         <div class="icon">📱</div>
         <h2>请横屏游戏</h2>
         <p>为获得更好的游戏体验，请将手机横过来</p>
+    </div>
+
+    <!-- 背景粒子效果 -->
+    <div class="particles-container" id="particlesContainer"></div>
+    
+    <!-- 烟花容器 -->
+    <div class="fireworks-container" id="fireworksContainer"></div>
+    
+    <!-- 轮到自己的提示 -->
+    <div class="turn-indicator" id="turnIndicator">🎯 轮到你出牌了！</div>
+    
+    <!-- 快捷表情按钮 -->
+    <button class="emoji-toggle-btn" id="emojiToggleBtn" onclick="toggleEmojiPanel()">😊</button>
+    
+    <!-- 快捷表情面板 -->
+    <div class="emoji-panel" id="emojiPanel">
+        <div class="emoji-panel-header">
+            <h4>快捷表情</h4>
+            <button class="emoji-panel-close" onclick="toggleEmojiPanel()">✕</button>
+        </div>
+        <div class="emoji-grid">
+            <button class="emoji-btn" onclick="sendEmoji('😄')">😄</button>
+            <button class="emoji-btn" onclick="sendEmoji('😭')">😭</button>
+            <button class="emoji-btn" onclick="sendEmoji('😡')">😡</button>
+            <button class="emoji-btn" onclick="sendEmoji('🤔')">🤔</button>
+            <button class="emoji-btn" onclick="sendEmoji('👍')">👍</button>
+            <button class="emoji-btn" onclick="sendEmoji('👎')">👎</button>
+            <button class="emoji-btn" onclick="sendEmoji('🎉')">🎉</button>
+            <button class="emoji-btn" onclick="sendEmoji('💪')">💪</button>
+            <button class="emoji-btn" onclick="sendEmoji('🙏')">🙏</button>
+            <button class="emoji-btn" onclick="sendEmoji('😎')">😎</button>
+            <button class="emoji-btn" onclick="sendEmoji('🤣')">🤣</button>
+            <button class="emoji-btn" onclick="sendEmoji('😱')">😱</button>
+        </div>
+        <div class="quick-phrases">
+            <button class="phrase-btn" onclick="sendPhrase('稳住，别浪！')">🎯 稳住，别浪！</button>
+            <button class="phrase-btn" onclick="sendPhrase('快点出牌啦～')">⏰ 快点出牌啦～</button>
+            <button class="phrase-btn" onclick="sendPhrase('打得不错！')">👏 打得不错！</button>
+            <button class="phrase-btn" onclick="sendPhrase('这把我要胡！')">🔥 这把我要胡！</button>
+        </div>
     </div>
 
     <!-- 大厅界面 -->
@@ -2801,6 +3306,14 @@
                 const isMyTurn = gameState.currentPlayerIndex === mySeatIndex;
                 const phaseChanged = prevPhase !== gameState.turnPhase || prevPlayer !== gameState.currentPlayerIndex;
                 
+                // 【UI改进】轮到自己时显示提示和发光效果
+                if (isMyTurn && gameState.turnPhase === 'discard' && phaseChanged) {
+                    showTurnIndicator(true);
+                    updateMyTurnEffect(true);
+                } else if (!isMyTurn || gameState.turnPhase !== 'discard') {
+                    updateMyTurnEffect(false);
+                }
+                
                 // 【新增】如果不是我的出牌回合，停止倒计时
                 if (!isMyTurn || gameState.turnPhase !== 'discard') {
                     stopDiscardCountdown();
@@ -3047,6 +3560,14 @@
             // 聊天
             socket.on('chat_message', (data) => {
                 addChatMessage(data.username, data.message);
+            });
+            
+            // 监听表情气泡事件
+            socket.on('emoji_received', (data) => {
+                // 在发送者头像位置显示表情气泡
+                if (data.seatIndex !== mySeatIndex) {
+                    showEmojiBubble(data.emoji, data.seatIndex);
+                }
             });
             
             // 监听轻量级更新（性能优化）
@@ -3670,13 +4191,19 @@
             socket.emit('player_action', { action });
             hideResponseButtons();
             
-            // 显示提示
-            if (action === 'peng') {
-                showToast('碰！');
-            } else if (action === 'gang') {
-                showToast('杠！');
-            } else if (action === 'hu') {
-                showToast('胡！');
+            // 显示动作特效
+            if (action === 'peng' || action === 'gang' || action === 'hu' || action === 'hu_zimo') {
+                showActionEffect(action);
+                
+                // 播放对应音频
+                const myVoice = getPlayerVoiceBySeat(mySeatIndex);
+                if (action === 'peng') {
+                    playActionAudio('peng', myVoice);
+                } else if (action === 'gang') {
+                    playActionAudio('gang', myVoice);
+                } else if (action === 'hu' || action === 'hu_zimo') {
+                    playActionAudio('hu', myVoice);
+                }
             }
         }
         
@@ -4204,6 +4731,299 @@
             document.addEventListener('DOMContentLoaded', preloadSprites);
         } else {
             preloadSprites();
+        }
+        
+        // ==================== UI/UX 改进 - 动画效果系统 ====================
+        
+        // 创建背景粒子效果
+        function initParticles() {
+            const container = document.getElementById('particlesContainer');
+            if (!container) return;
+            
+            const particleCount = window.innerWidth < 768 ? 15 : 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDuration = (15 + Math.random() * 20) + 's';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.opacity = 0.1 + Math.random() * 0.3;
+                particle.style.width = (3 + Math.random() * 4) + 'px';
+                particle.style.height = particle.style.width;
+                container.appendChild(particle);
+            }
+        }
+        
+        // 显示动作特效（碰/杠/胡）
+        function showActionEffect(action, playerName = '') {
+            const effectTexts = {
+                'peng': '碰！',
+                'gang': '杠！',
+                'hu': '胡！',
+                'zimo': '自摸！',
+                'hu_zimo': '自摸！'
+            };
+            
+            const text = effectTexts[action];
+            if (!text) return;
+            
+            const effect = document.createElement('div');
+            effect.className = 'action-effect';
+            effect.innerHTML = `<div class="action-effect-text ${action}">${text}</div>`;
+            document.body.appendChild(effect);
+            
+            // 播放特效后移除
+            setTimeout(() => effect.remove(), 1500);
+            
+            // 如果是胡牌，显示烟花
+            if (action === 'hu' || action === 'zimo' || action === 'hu_zimo') {
+                showFireworks();
+            }
+        }
+        
+        // 烟花效果
+        function showFireworks() {
+            const container = document.getElementById('fireworksContainer');
+            if (!container) return;
+            
+            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'];
+            const fireworkCount = window.innerWidth < 768 ? 5 : 10;
+            
+            for (let i = 0; i < fireworkCount; i++) {
+                setTimeout(() => {
+                    createFirework(container, colors);
+                }, i * 200);
+            }
+        }
+        
+        function createFirework(container, colors) {
+            const x = 20 + Math.random() * 60; // 20% ~ 80% 屏幕宽度
+            const y = 20 + Math.random() * 40; // 20% ~ 60% 屏幕高度
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const particleCount = 12;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'firework-particle';
+                particle.style.left = x + '%';
+                particle.style.top = y + '%';
+                particle.style.background = color;
+                particle.style.boxShadow = `0 0 6px ${color}`;
+                
+                // 计算粒子飞行方向
+                const angle = (i / particleCount) * 2 * Math.PI;
+                const distance = 50 + Math.random() * 100;
+                const endX = Math.cos(angle) * distance;
+                const endY = Math.sin(angle) * distance;
+                particle.style.setProperty('--particle-end', `translate(${endX}px, ${endY}px)`);
+                
+                container.appendChild(particle);
+                
+                // 动画结束后移除
+                setTimeout(() => particle.remove(), 1200);
+            }
+        }
+        
+        // 显示/隐藏轮到自己的提示
+        function showTurnIndicator(show = true) {
+            const indicator = document.getElementById('turnIndicator');
+            if (!indicator) return;
+            
+            if (show) {
+                indicator.classList.add('active');
+                // 3秒后自动隐藏
+                setTimeout(() => {
+                    indicator.classList.remove('active');
+                }, 3000);
+            } else {
+                indicator.classList.remove('active');
+            }
+        }
+        
+        // 更新手牌区域的轮到自己效果
+        function updateMyTurnEffect(isMyTurn) {
+            const handArea = document.querySelector('.my-hand-area');
+            if (!handArea) return;
+            
+            if (isMyTurn && gameState?.turnPhase === 'discard') {
+                handArea.classList.add('my-turn');
+            } else {
+                handArea.classList.remove('my-turn');
+            }
+        }
+        
+        // 出牌飞行动画
+        function playDiscardAnimation(tileElement, callback) {
+            if (!tileElement || document.body.classList.contains('reduce-motion')) {
+                if (callback) callback();
+                return;
+            }
+            
+            tileElement.classList.add('discarding');
+            
+            setTimeout(() => {
+                if (callback) callback();
+            }, 400);
+        }
+        
+        // 摸牌动画
+        function playDrawAnimation(tileElement) {
+            if (!tileElement || document.body.classList.contains('reduce-motion')) return;
+            
+            tileElement.classList.add('drawing');
+            
+            setTimeout(() => {
+                tileElement.classList.remove('drawing');
+            }, 400);
+        }
+        
+        // 牌面点击波纹效果
+        function createTileRipple(event, tileElement) {
+            if (document.body.classList.contains('reduce-motion')) return;
+            
+            const rect = tileElement.getBoundingClientRect();
+            const ripple = document.createElement('div');
+            ripple.className = 'tile-ripple';
+            ripple.style.left = (event.clientX - rect.left) + 'px';
+            ripple.style.top = (event.clientY - rect.top) + 'px';
+            ripple.style.width = '20px';
+            ripple.style.height = '20px';
+            
+            tileElement.style.position = 'relative';
+            tileElement.style.overflow = 'hidden';
+            tileElement.appendChild(ripple);
+            
+            setTimeout(() => ripple.remove(), 600);
+        }
+        
+        // 快捷表情面板
+        let emojiPanelOpen = false;
+        
+        function toggleEmojiPanel() {
+            emojiPanelOpen = !emojiPanelOpen;
+            const panel = document.getElementById('emojiPanel');
+            
+            if (emojiPanelOpen) {
+                panel.classList.add('active');
+            } else {
+                panel.classList.remove('active');
+            }
+        }
+        
+        // 发送表情
+        function sendEmoji(emoji) {
+            socket.emit('chat_message', { message: emoji, isEmoji: true });
+            toggleEmojiPanel();
+            
+            // 在自己头像位置显示表情气泡
+            showEmojiBubble(emoji, mySeatIndex);
+        }
+        
+        // 发送快捷语句
+        function sendPhrase(phrase) {
+            socket.emit('chat_message', { message: phrase });
+            toggleEmojiPanel();
+        }
+        
+        // 显示表情气泡
+        function showEmojiBubble(emoji, seatIndex) {
+            // 获取对应座位的位置
+            const displaySeat = typeof seatIndex === 'number' ? getDisplaySeat(seatIndex) : seatIndex;
+            const seatEl = document.querySelector(`.seat-${displaySeat} .seat-avatar`) ||
+                          document.querySelector(`#seat-${displaySeat} .seat-avatar`);
+            
+            if (!seatEl) return;
+            
+            const rect = seatEl.getBoundingClientRect();
+            const bubble = document.createElement('div');
+            bubble.className = 'emoji-bubble';
+            bubble.textContent = emoji;
+            bubble.style.left = rect.left + rect.width / 2 + 'px';
+            bubble.style.top = rect.top + 'px';
+            
+            document.body.appendChild(bubble);
+            
+            setTimeout(() => bubble.remove(), 2000);
+        }
+        
+        // 覆盖原有的 showToast 函数，添加动画效果
+        const originalShowToast = showToast;
+        showToast = function(message, duration = 2000) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            toast.style.animation = 'none';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, 10px)';
+            
+            document.body.appendChild(toast);
+            
+            // 强制重绘后添加动画
+            requestAnimationFrame(() => {
+                toast.style.transition = 'all 0.3s ease-out';
+                toast.style.opacity = '1';
+                toast.style.transform = 'translate(-50%, 0)';
+            });
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, -10px)';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        };
+        
+        // 增强游戏状态更新，添加动画效果
+        const originalUpdateGameUI = scheduleUpdate;
+        
+        // 监听动作执行事件，显示特效
+        if (socket) {
+            socket.on('action_executed', (data) => {
+                console.log('动作执行:', data);
+                const player = gameState?.players?.[data.playerIndex];
+                showActionEffect(data.action, player?.username);
+                
+                // 播放对应动作的音频
+                if (data.action === 'peng') {
+                    playActionAudio('peng', getPlayerVoiceBySeat(data.playerIndex));
+                } else if (data.action === 'gang') {
+                    playActionAudio('gang', getPlayerVoiceBySeat(data.playerIndex));
+                }
+            });
+            
+            // 监听表情消息
+            socket.on('emoji_received', (data) => {
+                showEmojiBubble(data.emoji, data.seatIndex);
+            });
+        }
+        
+        // 页面加载时初始化粒子效果
+        document.addEventListener('DOMContentLoaded', () => {
+            initParticles();
+            
+            // 为手牌添加点击波纹效果
+            document.addEventListener('click', (e) => {
+                const tile = e.target.closest('.tile');
+                if (tile && !tile.classList.contains('back')) {
+                    createTileRipple(e, tile);
+                }
+            });
+        });
+        
+        // 覆盖更新游戏UI，添加轮到自己的效果
+        const _originalDoUpdateGameUI = typeof _doUpdateGameUI !== 'undefined' ? _doUpdateGameUI : null;
+        if (_originalDoUpdateGameUI) {
+            const wrappedUpdateGameUI = _originalDoUpdateGameUI;
+            _doUpdateGameUI = function() {
+                wrappedUpdateGameUI.apply(this, arguments);
+                
+                // 检查是否轮到自己
+                if (gameState) {
+                    const isMyTurn = gameState.currentPlayerIndex === mySeatIndex;
+                    const isDiscardPhase = gameState.turnPhase === 'discard';
+                    updateMyTurnEffect(isMyTurn && isDiscardPhase);
+                }
+            };
         }
         
         // 初始化

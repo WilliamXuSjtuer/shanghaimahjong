@@ -1933,10 +1933,20 @@ io.on('connection', (socket) => {
         if (room) {
             const player = room.players.find(p => p.id === socket.id);
             if (player) {
+                // 广播聊天消息
                 room.broadcast('chat_message', {
                     username: player.username,
                     message: data.message
                 });
+                
+                // 如果是表情消息，额外广播表情气泡事件
+                if (data.isEmoji) {
+                    room.broadcast('emoji_received', {
+                        emoji: data.message,
+                        seatIndex: player.seatIndex,
+                        username: player.username
+                    });
+                }
             }
         }
     });
