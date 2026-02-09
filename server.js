@@ -218,7 +218,7 @@ class MahjongRoom {
                                 message: '轮到你出牌了！'
                             });
                             // 重新发送倒计时
-                            socket.emit('discard_countdown', { seconds: 15 });
+                            socket.emit('discard_countdown', { seconds: 60 });
                         }, 200);
                     } else if (this.gameState.turnPhase === 'draw') {
                         // 摸牌阶段：通知玩家可以摸牌
