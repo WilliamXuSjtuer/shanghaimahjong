@@ -2166,10 +2166,13 @@
             
             .game-screen {
                 padding: 5px;
-                display: flex;
                 flex-direction: column;
                 min-height: 100vh;
                 min-height: 100dvh;
+            }
+            
+            .game-screen.active {
+                display: flex;
             }
             
             .status-bar {
@@ -3662,6 +3665,21 @@
                 // 启动网络质量检测
                 startPingMonitor();
                 updateNetworkIndicator('good');
+                
+                // 检查是否有保存的房间信息，尝试重连
+                const savedRoomCode = sessionStorage.getItem('mahjong_room_code');
+                const savedUsername = sessionStorage.getItem('mahjong_username');
+                const savedVoice = sessionStorage.getItem('mahjong_voice') || 'female01';
+                if (savedRoomCode && savedUsername) {
+                    console.log('尝试自动重连到房间:', savedRoomCode);
+                    myVoice = savedVoice;
+                    socket.emit('join_room', { 
+                        roomCode: savedRoomCode, 
+                        username: savedUsername, 
+                        avatar: '👤', 
+                        voice: savedVoice 
+                    });
+                }
             });
 
             socket.on('disconnect', () => {
@@ -3685,6 +3703,8 @@
 
             socket.on('room_joined', (data) => {
                 currentRoom = data.roomCode;
+                sessionStorage.setItem('mahjong_room_code', data.roomCode);
+                sessionStorage.setItem('mahjong_username', username);
                 showRoomScreen();
             });
 
@@ -4260,14 +4280,22 @@
         
         // 初始化语音
         function initVoice() {
-            // 默认女声1
-            myVoice = 'female01';
+            const savedVoice = sessionStorage.getItem('mahjong_voice');
+            myVoice = savedVoice || 'female01';
+            
+            // 更新界面上的语音选择状态
+            document.getElementById('voiceFemale01').classList.toggle('active', myVoice === 'female01');
+            document.getElementById('voiceFemale02').classList.toggle('active', myVoice === 'female02');
+            document.getElementById('voiceMale').classList.toggle('active', myVoice === 'male');
+            document.getElementById('voiceMale02').classList.toggle('active', myVoice === 'male02');
+            
             console.log('初始化语音:', myVoice);
         }
         
         // 选择语音
         function selectVoice(voice) {
             myVoice = voice;
+            sessionStorage.setItem('mahjong_voice', voice);
             // 更新按钮状态
             document.getElementById('voiceFemale01').classList.toggle('active', voice === 'female01');
             document.getElementById('voiceFemale02').classList.toggle('active', voice === 'female02');
@@ -4392,6 +4420,8 @@
             socket.emit('leave_room');
             currentRoom = null;
             isReady = false;
+            sessionStorage.removeItem('mahjong_room_code');
+            sessionStorage.removeItem('mahjong_username');
             document.getElementById('roomScreen').classList.remove('active');
             document.getElementById('lobbyScreen').classList.add('active');
         }
@@ -5656,6 +5686,10 @@
             isReady = false;
             const readyBtnEl = document.getElementById('readyBtn');
             if (readyBtnEl) readyBtnEl.innerHTML = '<i class="fas fa-check"></i> 准备';
+            
+            // 清除房间信息
+            sessionStorage.removeItem('mahjong_room_code');
+            sessionStorage.removeItem('mahjong_username');
             
             // 重置积分
             matchScores = [0, 0, 0, 0];

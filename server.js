@@ -2809,6 +2809,13 @@ io.on('connection', (socket) => {
         }
         
         if (room.gameRunning) {
+            // 检查是否是断线玩家的重连
+            const offlinePlayer = room.players.find(p => !p.isBot && p.offline && p.username === username);
+            if (offlinePlayer) {
+                // 允许重连
+                room.addPlayer(socket, username, avatar, voice || 'female01');
+                return;
+            }
             socket.emit('join_error', { message: '游戏已开始，无法加入' });
             return;
         }
