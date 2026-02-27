@@ -527,7 +527,7 @@
             transform: translateX(-50%);
             display: flex;
             gap: 10px;
-            z-index: 500;
+            z-index: 100;
         }
 
         .hint-btn {
@@ -937,10 +937,10 @@
 
     <!-- 操作提示（碰杠 - 上海敲麻不能吃） -->
     <div class="action-hints" id="actionHints" style="display: none;">
-        <button class="hint-btn" id="pengBtn" onclick="doAction('peng')" style="display: none; background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);">碰</button>
-        <button class="hint-btn" id="gangBtn" onclick="doAction('gang')" style="display: none; background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);">杠</button>
-        <button class="hint-btn" id="huBtn2" onclick="doAction('hu')" style="display: none; background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);">胡</button>
-        <button class="hint-btn" id="passBtn" onclick="doAction('pass')" style="background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);">过</button>
+        <button class="hint-btn" id="pengBtn" onclick="doAction('peng')" style="display: none;">碰</button>
+        <button class="hint-btn" id="gangBtn" onclick="doAction('gang')" style="display: none;">杠</button>
+        <button class="hint-btn" id="huBtn2" onclick="doAction('hu')" style="display: none;">胡</button>
+        <button class="hint-btn" id="passBtn" onclick="doAction('pass')">过</button>
     </div>
 
     <!-- 消息弹窗 -->
@@ -1832,9 +1832,9 @@
             if (selectable && gameState.selectedTile === index) classes.push('selected');
             if (isNew) classes.push('new-tile');
             
-            // 精灵图未加载完成时使用文字模式显示
+            // 精灵图未加载完成时显示加载状态
             if (!spriteLoaded) {
-                classes.push('text-mode');
+                classes.push('loading');
             }
             
             if (back) {
@@ -2499,44 +2499,22 @@
                 return false; // 没有可操作的
             }
             
-            console.log('显示操作提示 - 可碰:', canPeng, '可杠:', canGang, '可胡:', canHuNow);
-            
             const actionHints = document.getElementById('actionHints');
             const pengBtn = document.getElementById('pengBtn');
             const gangBtn = document.getElementById('gangBtn');
             const huBtn2 = document.getElementById('huBtn2');
             const passBtn = document.getElementById('passBtn');
             
-            // 先重置所有按钮
-            pengBtn.style.display = 'none';
-            gangBtn.style.display = 'none';
-            huBtn2.style.display = 'none';
-            passBtn.style.display = 'none';
-            
-            // 根据条件显示按钮
-            if (canPeng) {
-                pengBtn.style.display = 'inline-block';
-                console.log('显示碰按钮');
-            }
-            if (canGang) {
-                gangBtn.style.display = 'inline-block';
-                console.log('显示杠按钮');
-            }
-            if (canHuNow) {
-                huBtn2.style.display = 'inline-block';
-                console.log('显示胡按钮');
-            }
+            pengBtn.style.display = canPeng ? 'inline-block' : 'none';
+            gangBtn.style.display = canGang ? 'inline-block' : 'none';
+            huBtn2.style.display = canHuNow ? 'inline-block' : 'none';
             passBtn.style.display = 'inline-block';
             
             actionHints.style.display = 'flex';
             
-            // 显示被打出的牌和可操作提示
+            // 显示被打出的牌
             const display = getTileDisplay(gameState.lastDiscard);
-            let actionText = '';
-            if (canPeng) actionText += '碰 ';
-            if (canGang) actionText += '杠 ';
-            if (canHuNow) actionText += '胡 ';
-            showToast(`${['玩家','AI-东','AI-南','AI-北'][gameState.lastDiscardPlayer]}打出 ${display.value}${display.suit} - 可${actionText}点击按钮选择`);
+            showToast(`${['玩家','AI-东','AI-南','AI-北'][gameState.lastDiscardPlayer]}打出 ${display.value}${display.suit}`);
             
             return true;
         }

@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>上海敲麻 - 多人联机版 | AI小游戏平台</title>
+    <link rel="preload" href="/img/majiang.png" as="image" fetchpriority="high">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        :root {
+            --table-green: #1a5c3a;
+            --table-dark: #0d3321;
+            --gold: #d4af37;
+            --gold-light: #f4d03f;
+            --tile-bg: #f5f0e1;
+            --tile-border: #c9b896;
+            --red: #c0392b;
+            --blue: #2980b9;
+            --green: #27ae60;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: radial-gradient(ellipse at center, var(--table-green) 0%, var(--table-dark) 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* 通用容器 */
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .screen.active { display: flex; }
+
+        /* 大厅界面 */
+        .lobby-title {
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 3.5rem;
+            color: var(--gold);
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+            margin-bottom: 10px;
+        }
+
+        .lobby-subtitle {
+            font-size: 1.2rem;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 30px;
+        }
+
+        .lobby-container {
+            background: rgba(0,0,0,0.4);
+            border: 2px solid var(--gold);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--gold);
+            font-size: 1.1rem;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1rem;
+            border: 2px solid var(--gold);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            outline: none;
+            text-transform: uppercase;
+        }
+
+        .input-group input::placeholder {
+            color: rgba(255,255,255,0.5);
+            text-transform: none;
+        }
+
+        /* 语音选择器 */
+        .voice-selector {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .voice-btn {
+            flex: 1;
+            min-width: 80px;
+            padding: 10px 12px;
+            font-size: 0.9rem;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        
+        .voice-btn:hover {
+            border-color: var(--gold);
+            color: #fff;
+        }
+        
+        .voice-btn.active {
+            border-color: var(--gold);
+            background: linear-gradient(135deg, rgba(212,175,55,0.3) 0%, rgba(184,134,11,0.3) 100%);
+            color: var(--gold);
+            font-weight: bold;
+        }
+        
+        .voice-btn i {
+            font-size: 1rem;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 16px 30px;
+            margin: 12px 0;
+            font-size: 1.2rem;
+            font-family: 'Ma Shan Zheng', cursive;
+            background: linear-gradient(135deg, var(--gold) 0%, #b8860b 100%);
+            color: #1a1a1a;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212,175,55,0.4);
+        }
+
+        .btn.secondary {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 2px solid var(--gold);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 25px 0;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255,255,255,0.3);
+        }
+
+        .divider span {
+            padding: 0 15px;
+        }
+
+        /* 房间界面 */
+        .room-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .room-code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 2.8rem;
+            font-weight: bold;
+            color: var(--gold);
+            letter-spacing: 6px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.3);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 2px solid var(--gold);
+        }
+
+        .room-code-label {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 5px;
+        }
+
+        .copy-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .room-container {
+            background: rgba(0,0,0,0.4);
+            border: 2px solid var(--gold);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .players-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .player-slot {
+            background: rgba(255,255,255,0.1);
+            border: 2px dashed rgba(255,255,255,0.3);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .player-slot.filled {
+            border-style: solid;
+            border-color: var(--gold);
+            background: rgba(212,175,55,0.1);
+        }
+
+        .player-slot.ready {
+            border-color: var(--green);
+            background: rgba(39,174,96,0.2);
+        }
+
+        .player-avatar {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+        }
+
+        .player-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .player-wind {
+            font-size: 0.9rem;
+            color: var(--gold);
+        }
+
+        .player-status {
+            font-size: 0.85rem;
+            margin-top: 5px;
+            padding: 3px 12px;
+            border-radius: 10px;
+        }
+
+        .player-status.ready {
+            background: var(--green);
+            color: #fff;
+        }
+
+        .player-status.waiting {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+
+        .player-status.host {
+            background: var(--gold);
+            color: #1a1a1a;
+        }
+
+        .empty-slot {
+            color: rgba(255,255,255,0.5);
+            font-size: 1rem;
+        }
+
+        .room-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .room-actions .btn {
+            flex: 1;
+        }
+
+        /* 游戏界面 - 采用单人模式布局 */
+        .game-screen {
+            padding: 8px;
+            justify-content: flex-start;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* 顶部状态栏 - 单人模式样式 */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-icon {
+            width: 30px;
+            height: 30px;
+            background: var(--gold);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1a1a1a;
+            font-weight: bold;
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        /* 麻将桌面 - 单人模式样式 */
+        .mahjong-table { 
+            background: radial-gradient(ellipse at center, #2d8b57 0%, #1a5c3a 50%, #0d3321 100%);
+            border: 8px solid #5d4037;
+            border-radius: 20px;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.3), 0 10px 30px rgba(0,0,0,0.5);
+            padding: 20px;
+            position: relative;
+            min-height: 500px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        /* 对手区域 - 单人模式网格布局 */
+        .opponents-area {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .opponent {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .player-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--gold) 0%, #b8860b 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            border: 3px solid white;
+        }
+
+        .player-avatar.current-turn {
+            animation: pulse 1s infinite;
+        }
+
+        .player-avatar.offline {
+            filter: grayscale(100%);
+            opacity: 0.5;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(212,175,55,0); }
+        }
+
+        .player-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .player-wind {
+            background: var(--red);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .opponent-hand {
+            display: flex;
+            justify-content: center;
+            gap: 2px;
+            flex-wrap: wrap;
+        }
+
+        .melds-area {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .meld-group {
+            display: flex;
+            gap: 2px;
+            background: rgba(255,255,255,0.1);
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        /* 中央出牌区域 - 单人模式四方向弃牌区 */
+        .center-area {
+            background: rgba(0,0,0,0.15);
+            border-radius: 15px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .discard-zone {
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 8px;
+            margin: 5px 0;
+        }
+
+        .discard-zone .zone-label {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .discard-zone .discards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            justify-content: center;
+            min-height: 35px;
+        }
+
+        .discard-sides {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .discard-zone.left,
+        .discard-zone.right {
+            flex: 1;
+        }
+
+        .discard-zone.bottom {
+            border: 1px solid var(--gold);
+            background: rgba(212,175,55,0.1);
+        }
+
+        .discard-zone.bottom .zone-label {
+            color: var(--gold);
+        }
+
+        /* 玩家区域 - 单人模式样式 */
+        .player-area {
+            position: relative;
+        }
+
+        /* 手牌区域 */
+        .hand-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            min-height: 100px;
+        }
+
+        /* 花牌区域 */
+        .flowers-area {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .flower-tile {
+            width: 35px;
+            height: 50px;
+        }
+
+        /* 操作按钮 - 单人模式样式 */
+        .action-panel {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 12px 25px;
+            font-size: 1.1rem;
+            font-family: 'Ma Shan Zheng', cursive;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 80px;
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, var(--gold) 0%, #b8860b 100%);
+            color: #1a1a1a;
+        }
+
+        .action-btn.secondary {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .action-btn.danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+
+        .action-btn.success {
+            background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+            color: white;
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .action-btn:not(:disabled):hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        /* 麻将牌样式 */
+        .tile { 
+            width: 50px;
+            height: 70px;
+            background-color: #f5f0e1;
+            background-image: url('/img/majiang.png');
+            background-repeat: no-repeat;
+            border: 2px solid var(--tile-border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            position: relative;
+            user-select: none;
+        }
+
+        .tile:hover {
+            transform: translateY(-8px);
+            box-shadow: 2px 8px 15px rgba(0,0,0,0.4);
+        }
+
+        .tile.selected {
+            transform: translateY(-15px);
+            border-color: var(--gold);
+            box-shadow: 0 0 20px rgba(212,175,55,0.6);
+        }
+        
+        .tile.new-tile {
+            margin-left: 15px;
+            border-color: #3498db;
+            box-shadow: 0 0 15px rgba(52,152,219,0.8);
+            animation: newTilePulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes newTilePulse {
+            0%, 100% { box-shadow: 0 0 15px rgba(52,152,219,0.8); }
+            50% { box-shadow: 0 0 25px rgba(52,152,219,1); }
+        }
+
+        .tile.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .tile.small {
+            width: 32px;
+            height: 45px;
+        }
+        
+        .tile.loading {
+            background-image: none;
+            background: linear-gradient(135deg, #e0d8c8 25%, #f5f0e1 50%, #e0d8c8 75%);
+            background-size: 200% 100%;
+            animation: tileLoading 1s ease-in-out infinite;
+        }
+        
+        @keyframes tileLoading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        body.sprites-loaded .tile.loading {
+            animation: none;
+            background: #f5f0e1;
+        }
+
+        .tile.back {
+            background-image: none;
+            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+            border-color: #1b5e20;
+        }
+
+        .tile.back::after {
+            content: '🀫';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            opacity: 0.5;
+        }
+
+        .tile.small.back::after {
+            font-size: 0.8rem;
+        }
+
+        .tile-text {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .tile.text-mode {
+            background-image: none !important;
+            background: linear-gradient(180deg, #fff 0%, var(--tile-bg) 100%);
+        }
+
+        .tile.text-mode .tile-text {
+            display: flex;
+        }
+
+        .tile-value {
+            font-size: 1.6rem;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        .tile-suit {
+            font-size: 0.65rem;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .tile.wan .tile-value { color: var(--red); }
+        .tile.tiao .tile-value { color: var(--green); }
+        .tile.tong .tile-value { color: var(--blue); }
+        .tile.feng .tile-value { color: #333; }
+        .tile.hua .tile-value { color: #9b59b6; }
+
+        /* 动作提示按钮 */
+        .action-hints {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .hint-btn {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-family: 'Ma Shan Zheng', cursive;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            border: 3px solid white;
+            border-radius: 15px;
+            cursor: pointer;
+            animation: bounce 0.5s ease infinite;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* 消息弹窗 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+            border: 3px solid var(--gold);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-title {
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 2.5rem;
+            color: var(--gold);
+            margin-bottom: 20px;
+        }
+
+        .modal-message {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        /* 积分面板 */
+        .score-panel {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .score-item {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--gold);
+            border-radius: 8px;
+            padding: 5px 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .flower-count {
+            font-size: 0.7rem;
+            color: #ff9999;
+            min-width: 70px;
+        }
+        
+        .score-name {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .score-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--gold);
+        }
+        
+        .score-value.positive { color: #2ecc71; }
+        .score-value.negative { color: #e74c3c; }
+
+        /* 聊天面板 */
+        .chat-toggle-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--gold);
+            color: #1a1a1a;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            z-index: 500;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+        }
+        
+        body.in-game .chat-toggle-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .chat-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #e74c3c;
+            color: #fff;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 18px;
+        }
+        
+        .chat-panel {
+            display: none;
+            position: fixed;
+            bottom: 80px;
+            left: 20px;
+            width: 300px;
+            max-height: 350px;
+            background: rgba(0,0,0,0.9);
+            border: 2px solid var(--gold);
+            border-radius: 15px;
+            overflow: hidden;
+            z-index: 600;
+            flex-direction: column;
+        }
+        
+        .chat-panel.active {
+            display: flex;
+        }
+        
+        .chat-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: rgba(212,175,55,0.2);
+            border-bottom: 1px solid var(--gold);
+        }
+        
+        .chat-panel .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            max-height: 200px;
+        }
+        
+        .chat-panel .chat-input-area {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .chat-panel .chat-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            font-size: 0.9rem;
+        }
+        
+        .chat-panel .chat-send {
+            margin-left: 8px;
+            padding: 8px 12px;
+            background: var(--gold);
+            color: #1a1a1a;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        
+        .chat-message {
+            padding: 5px 0;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .chat-message .name {
+            color: var(--gold);
+            font-weight: bold;
+        }
+
+        /* 表情面板 */
+        .emoji-panel {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid var(--gold);
+            border-radius: 15px;
+            padding: 15px;
+            z-index: 800;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 280px;
+        }
+        
+        .emoji-panel.active {
+            display: flex;
+            animation: panelSlideUp 0.3s ease-out;
+        }
+        
+        @keyframes panelSlideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .emoji-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .emoji-panel-header h4 {
+            color: var(--gold);
+            margin: 0;
+            font-family: 'Ma Shan Zheng', cursive;
+        }
+        
+        .emoji-panel-close {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.6);
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        
+        .emoji-btn {
+            width: 50px;
+            height: 50px;
+            font-size: 1.8rem;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .emoji-btn:hover {
+            background: rgba(212, 175, 55, 0.3);
+            border-color: var(--gold);
+            transform: scale(1.1);
+        }
+        
+        .emoji-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .quick-phrases {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .phrase-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #fff;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        
+        .phrase-btn:hover {
+            background: rgba(212, 175, 55, 0.3);
+            border-color: var(--gold);
+        }
+
+        /* 表情按钮 */
+        .emoji-toggle-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 80px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            color: white;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            z-index: 500;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+        }
+        
+        body.in-game .emoji-toggle-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 网络状态指示器 */
+        .network-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .network-indicator.slow {
+            display: block;
+            background: rgba(231, 76, 60, 0.9);
+            color: white;
+        }
+        
+        .network-indicator.medium {
+            display: block;
+            background: rgba(241, 196, 15, 0.9);
+            color: #333;
+        }
+
+        /* 动作特效 */
+        .action-effect {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 8000;
+            pointer-events: none;
+        }
+        
+        .action-effect-text {
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 120px;
+            font-weight: bold;
+            text-shadow: 0 0 30px currentColor, 0 0 60px currentColor;
+            animation: actionPop 1s ease-out forwards;
+        }
+        
+        .action-effect-text.peng {
+            color: #3498db;
+        }
+        
+        .action-effect-text.gang {
+            color: #9b59b6;
+        }
+        
+        .action-effect-text.hu, .action-effect-text.zimo {
+            color: #FFD700;
+            animation: actionPop 1.5s ease-out forwards, huGlow 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes actionPop {
+            0% {
+                transform: scale(0) rotate(-10deg);
+                opacity: 0;
+            }
+            30% {
+                transform: scale(1.3) rotate(5deg);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1) rotate(-2deg);
+            }
+            100% {
+                transform: scale(1.1) rotate(0deg);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes huGlow {
+            0%, 100% {
+                text-shadow: 0 0 30px #FFD700, 0 0 60px #FFD700, 0 0 90px #FF8C00;
+            }
+            50% {
+                text-shadow: 0 0 50px #FFD700, 0 0 100px #FFD700, 0 0 150px #FF8C00;
+            }
+        }
+
+        /* 烟花容器 */
+        .fireworks-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 7500;
+            overflow: hidden;
+        }
+        
+        .firework-particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            animation: particleFly 1.2s ease-out forwards;
+        }
+        
+        @keyframes particleFly {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0);
+            }
+            100% {
+                opacity: 0;
+                transform: var(--particle-end);
+            }
+        }
+
+        /* 轮到自己时的提示 */
+        .turn-indicator {
+            position: fixed;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.9), rgba(184, 134, 11, 0.9));
+            color: #1a1a1a;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 1.5rem;
+            font-weight: bold;
+            z-index: 1500;
+            animation: turnIndicatorBounce 0.6s ease-out, turnIndicatorPulse 2s ease-in-out infinite 0.6s;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            display: none;
+        }
+        
+        .turn-indicator.active {
+            display: block;
+        }
+        
+        @keyframes turnIndicatorBounce {
+            0% {
+                transform: translateX(-50%) translateY(-30px);
+                opacity: 0;
+            }
+            60% {
+                transform: translateX(-50%) translateY(5px);
+            }
+            100% {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes turnIndicatorPulse {
+            0%, 100% {
+                transform: translateX(-50%) scale(1);
+            }
+            50% {
+                transform: translateX(-50%) scale(1.05);
+            }
+        }
+
+        /* Toast提示 */
+        .toast {
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            z-index: 2000;
+            font-size: 1.2rem;
+        }
+
+        /* 单局结算弹窗 */
+        .round-result-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 4000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .round-result-modal.active { display: flex; }
+        
+        .round-result-content {
+            background: linear-gradient(135deg, var(--table-green), var(--table-dark));
+            border: 3px solid var(--gold);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .round-result-title {
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 2rem;
+            color: var(--gold);
+            margin-bottom: 15px;
+        }
+        
+        .fan-detail-list, .score-change-list {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: left;
+        }
+        
+        .fan-item, .score-change-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .fan-item:last-child, .score-change-item:last-child {
+            border-bottom: none;
+        }
+        
+        .fan-name { color: #fff; }
+        .fan-value { color: var(--gold); font-weight: bold; }
+        
+        .score-change-name { color: #fff; }
+        .score-change-value { font-weight: bold; }
+        .score-change-value.positive { color: #2ecc71; }
+        .score-change-value.negative { color: #e74c3c; }
+        
+        .total-score-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            margin-top: 10px;
+            background: rgba(212,175,55,0.2);
+            border-radius: 8px;
+            font-size: 1.1rem;
+        }
+
+        /* 最终结算弹窗 */
+        .match-result-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 5000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .match-result-modal.active { display: flex; }
+        
+        .match-result-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 3px solid var(--gold);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+        
+        .match-result-title {
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 2.5rem;
+            color: var(--gold);
+            margin-bottom: 20px;
+        }
+        
+        .ranking-list {
+            margin: 20px 0;
+        }
+        
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 20px;
+            margin: 10px 0;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .ranking-item.first { 
+            background: linear-gradient(135deg, rgba(255,215,0,0.3), rgba(255,215,0,0.1));
+            border: 2px solid gold;
+        }
+        
+        .ranking-item.second { 
+            background: linear-gradient(135deg, rgba(192,192,192,0.3), rgba(192,192,192,0.1));
+            border: 1px solid silver;
+        }
+        
+        .ranking-item.third { 
+            background: linear-gradient(135deg, rgba(205,127,50,0.3), rgba(205,127,50,0.1));
+            border: 1px solid #cd7f32;
+        }
+        
+        .ranking-position {
+            font-size: 1.5rem;
+            font-weight: bold;
+            width: 40px;
+        }
+        
+        .ranking-position.first { color: gold; }
+        .ranking-position.second { color: silver; }
+        .ranking-position.third { color: #cd7f32; }
+        
+        .ranking-name {
+            flex: 1;
+            text-align: left;
+            margin-left: 15px;
+            font-size: 1.1rem;
+        }
+        
+        .ranking-score {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+        
+        .ranking-score.positive { color: #2ecc71; }
+        .ranking-score.negative { color: #e74c3c; }
+
+        /* 粒子效果 */
+        .particles-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            background: var(--gold);
+            border-radius: 50%;
+            opacity: 0.2;
+            animation: particleFloat 20s linear infinite;
+        }
+
+        @keyframes particleFloat {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+            }
+            100% {
+                transform: translateY(-100vh) rotate(360deg);
+            }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .lobby-title { font-size: 2.5rem; }
+            .room-code { font-size: 1.8rem; letter-spacing: 4px; padding: 8px 15px; }
+            .players-grid { grid-template-columns: 1fr; }
+            .tile { width: 38px; height: 55px; }
+            .tile.small { width: 25px; height: 35px; }
+            .opponents-area { grid-template-columns: 1fr; }
+            .status-bar { flex-wrap: wrap; gap: 10px; }
+            .action-btn { padding: 10px 18px; font-size: 1rem; }
+            
+            .chat-panel {
+                bottom: 70px;
+                left: 10px;
+                right: 10px;
+                width: auto;
+                max-height: 250px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            html, body {
+                overflow-x: hidden;
+            }
+            
+            .screen {
+                padding: 5px;
+            }
+            
+            .game-screen {
+                padding: 5px;
+                display: flex;
+                flex-direction: column;
+                min-height: 100vh;
+                min-height: 100dvh;
+            }
+            
+            .status-bar {
+                padding: 5px 8px;
+                margin-bottom: 5px;
+            }
+            
+            .mahjong-table {
+                padding: 6px;
+                gap: 5px;
+                border-width: 4px;
+                border-radius: 10px;
+            }
+            
+            .opponents-area {
+                gap: 8px;
+            }
+            
+            .tile {
+                width: 30px;
+                height: 42px;
+            }
+            
+            .tile.small {
+                width: 16px;
+                height: 22px;
+            }
+            
+            .score-panel {
+                gap: 4px;
+                margin-bottom: 5px;
+            }
+            
+            .score-item {
+                min-width: 45px;
+                padding: 3px 6px;
+            }
+            
+            .score-name { font-size: 0.65rem; }
+            .score-value { font-size: 0.85rem; }
+            
+            .action-panel {
+                gap: 8px;
+                margin-top: 10px;
+                flex-wrap: wrap;
+            }
+            
+            .action-btn {
+                padding: 10px 15px;
+                font-size: 0.9rem;
+                min-width: 60px;
+            }
+            
+            .modal-content,
+            .round-result-content,
+            .match-result-content {
+                width: 95%;
+                padding: 15px;
+                max-height: 85vh;
+            }
+            
+            .round-result-title,
+            .match-result-title {
+                font-size: 1.5rem;
+            }
+            
+            .fan-detail-list {
+                padding: 10px;
+                margin: 10px 0;
+            }
+            
+            .ranking-item {
+                padding: 10px 15px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .tile {
+                width: 24px;
+                height: 34px;
+            }
+            
+            .score-item {
+                min-width: 45px;
+                padding: 2px 5px;
+            }
+            
+            .action-btn {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* 性能优化 */
+        body.reduce-motion *,
+        body.reduce-motion *::before,
+        body.reduce-motion *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+
+        body.reduce-motion .tile:hover {
+            transform: none;
+        }
+
+        body.reduce-motion .tile.new-tile {
+            animation: none;
+            box-shadow: 0 0 10px rgba(52,152,219,0.9);
+        }
+
+        body.reduce-motion .player-avatar.current-turn {
+            animation: none;
+            box-shadow: 0 0 10px var(--gold);
+        }
+
+        .tile, .player-avatar, .modal-content {
+            will-change: transform;
+            transform: translateZ(0);
+        }
+
+        @media (max-width: 480px) {
+            .tile {
+                will-change: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles-container" id="particlesContainer"></div>
+    <div class="network-indicator" id="networkIndicator"></div>
+    <div class="fireworks-container" id="fireworksContainer"></div>
+    <div class="turn-indicator" id="turnIndicator">轮到你了！</div>
+
+    <!-- 大厅界面 -->
+    <div class="screen" id="lobbyScreen">
+        <h1 class="lobby-title">🀄 上海敲麻</h1>
+        <p class="lobby-subtitle">多人联机版</p>
+        
+        <div class="lobby-container">
+            <div class="input-group">
+                <label><i class="fas fa-user"></i> 你的昵称</label>
+                <input type="text" id="usernameInput" placeholder="输入你的昵称">
+            </div>
+            
+            <div class="voice-selector" style="margin-bottom: 20px;">
+                <div style="width: 100%; color: var(--gold); margin-bottom: 8px;">
+                    <i class="fas fa-volume-up"></i> 选择语音
+                </div>
+                <button type="button" class="voice-btn active" id="voiceFemale01" onclick="selectVoice('female01')">
+                    <i class="fas fa-venus"></i> 女1
+                </button>
+                <button type="button" class="voice-btn" id="voiceFemale02" onclick="selectVoice('female02')">
+                    <i class="fas fa-venus"></i> 女2
+                </button>
+                <button type="button" class="voice-btn" id="voiceMale" onclick="selectVoice('male')">
+                    <i class="fas fa-mars"></i> 男1
+                </button>
+                <button type="button" class="voice-btn" id="voiceMale02" onclick="selectVoice('male02')">
+                    <i class="fas fa-mars"></i> 男2
+                </button>
+            </div>
+            
+            <button class="btn" onclick="createRoom()">
+                <i class="fas fa-plus"></i> 创建房间
+            </button>
+            
+            <div class="divider"><span>或</span></div>
+            
+            <div class="input-group">
+                <label><i class="fas fa-door-open"></i> 加入房间</label>
+                <input type="text" id="roomCodeInput" placeholder="输入房间码（4位字母）">
+            </div>
+            
+            <button class="btn secondary" onclick="joinRoom()">
+                <i class="fas fa-sign-in-alt"></i> 加入
+            </button>
+            
+            <button class="btn secondary" onclick="window.location.href='mahjong/index.html'" style="margin-top: 20px;">
+                <i class="fas fa-robot"></i> 单人模式
+            </button>
+        </div>
+    </div>
+
+    <!-- 房间界面 -->
+    <div class="screen" id="roomScreen">
+        <div class="room-header">
+            <div class="room-code-label">房间码</div>
+            <div class="room-code" id="roomCodeDisplay">----</div>
+            <button class="copy-btn" onclick="copyRoomCode()">
+                <i class="fas fa-copy"></i> 复制房间码
+            </button>
+        </div>
+        
+        <div class="room-container">
+            <div class="players-grid" id="playersGrid"></div>
+            
+            <div class="room-actions">
+                <button class="btn" id="readyBtn" onclick="toggleReady()">
+                    <i class="fas fa-check"></i> 准备
+                </button>
+                <button class="btn secondary" onclick="leaveRoom()">
+                    <i class="fas fa-sign-out-alt"></i> 离开
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏界面 - 采用单人模式布局 -->
+    <div class="screen game-screen" id="gameScreen">
+        <!-- 顶部状态栏 -->
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-icon">🎴</div>
+                <span>剩余: <span id="remainingTiles">92</span>张</span>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">🏆</div>
+                <span>分数: <span id="playerScore">0</span></span>
+            </div>
+            <div class="status-item">
+                <div class="status-icon" id="menqingIcon">🚪</div>
+                <span id="menqingStatus">门清</span>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">🎲</div>
+                <span>局数: <span id="roundNum">1</span>/4</span>
+            </div>
+            <div class="status-item">
+                <div class="status-icon">🏠</div>
+                <span id="roomInfo">房间: ----</span>
+            </div>
+            <button class="back-btn" onclick="leaveGame()">
+                <i class="fas fa-home"></i> 退出
+            </button>
+        </div>
+
+        <!-- 积分面板 -->
+        <div class="score-panel" id="scorePanel"></div>
+
+        <!-- 麻将桌面 -->
+        <div class="mahjong-table">
+            <!-- 对手区域 - 网格布局 -->
+            <div class="opponents-area">
+                <div class="opponent" id="opponent2">
+                    <div class="player-info">
+                        <div class="player-avatar" id="opponent2Avatar">🤖</div>
+                        <span class="player-name" id="opponent2Name">AI-南</span>
+                        <span class="player-wind">南</span>
+                    </div>
+                    <div class="opponent-hand" id="opponent2Hand"></div>
+                    <div class="melds-area" id="opponent2Melds"></div>
+                    <div class="seat-discards" id="opponent2Discards"></div>
+                </div>
+                <div class="opponent" id="opponent1">
+                    <div class="player-info">
+                        <div class="player-avatar" id="opponent1Avatar">🤖</div>
+                        <span class="player-name" id="opponent1Name">AI-东</span>
+                        <span class="player-wind">东</span>
+                    </div>
+                    <div class="opponent-hand" id="opponent1Hand"></div>
+                    <div class="melds-area" id="opponent1Melds"></div>
+                    <div class="seat-discards" id="opponent1Discards"></div>
+                </div>
+                <div class="opponent" id="opponent3">
+                    <div class="player-info">
+                        <div class="player-avatar" id="opponent3Avatar">🤖</div>
+                        <span class="player-name" id="opponent3Name">AI-北</span>
+                        <span class="player-wind">北</span>
+                    </div>
+                    <div class="opponent-hand" id="opponent3Hand"></div>
+                    <div class="melds-area" id="opponent3Melds"></div>
+                    <div class="seat-discards" id="opponent3Discards"></div>
+                </div>
+            </div>
+
+            <!-- 中央区域 - 四方向弃牌区 -->
+            <div class="center-area">
+                <div class="discard-zone top" id="discard1">
+                    <div class="zone-label">东家出牌</div>
+                    <div class="discards"></div>
+                </div>
+                <div class="discard-sides">
+                    <div class="discard-zone left" id="discard2">
+                        <div class="zone-label">南家</div>
+                        <div class="discards"></div>
+                    </div>
+                    <div class="discard-zone right" id="discard3">
+                        <div class="zone-label">北家</div>
+                        <div class="discards"></div>
+                    </div>
+                </div>
+                <div class="discard-zone bottom" id="discard0">
+                    <div class="zone-label">我的出牌</div>
+                    <div class="discards"></div>
+                </div>
+            </div>
+
+            <!-- 玩家区域 -->
+            <div class="player-area">
+                <div class="player-info">
+                    <div class="player-avatar current-turn" id="playerAvatar">😊</div>
+                    <span class="player-name" id="playerName">玩家</span>
+                    <span class="player-wind" id="playerWind">西</span>
+                    <span id="turnIndicatorLocal" style="margin-left: 10px; color: var(--gold);">轮到你了！</span>
+                    <span id="flowerCount" style="margin-left: 15px; color: #f1c40f;">🌸 花牌: 0</span>
+                </div>
+                <div class="hand-container" id="playerHand"></div>
+                <div class="melds-area" id="playerMelds"></div>
+                <!-- 花牌展示区 -->
+                <div class="flowers-display" id="playerFlowers" style="margin-top: 10px; display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;"></div>
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="action-panel">
+            <button class="action-btn danger" id="discardBtn" onclick="discardSelected()" disabled>
+                <i class="fas fa-hand-point-down"></i> 打牌
+            </button>
+            <button class="action-btn success" id="huBtn" onclick="checkHu()" disabled>
+                <i class="fas fa-trophy"></i> 胡牌
+            </button>
+            <button class="action-btn secondary" onclick="showTips()">
+                <i class="fas fa-lightbulb"></i> 提示
+            </button>
+            <button class="action-btn secondary" id="soundBtn" onclick="toggleSound()">
+                <i class="fas fa-volume-up"></i> 声音
+            </button>
+        </div>
+    </div>
+
+    <!-- 操作提示（碰杠 - 上海敲麻不能吃） -->
+    <div class="action-hints" id="actionHints" style="display: none;">
+        <button class="hint-btn" id="pengBtn" onclick="doAction('peng')" style="display: none;">碰</button>
+        <button class="hint-btn" id="gangBtn" onclick="doAction('gang')" style="display: none;">杠</button>
+        <button class="hint-btn" id="huBtn2" onclick="doAction('hu')" style="display: none;">胡</button>
+        <button class="hint-btn" id="passBtn" onclick="doAction('pass')">过</button>
+    </div>
+
+    <!-- 消息弹窗 -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2 class="modal-title" id="modalTitle">🎉 恭喜！</h2>
+            <p class="modal-message" id="modalMessage">你赢了！</p>
+            <div id="modalButtons" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button class="btn" onclick="continueNextRound()" id="continueNextBtn" style="background: linear-gradient(135deg, #2ecc71, #27ae60);">
+                    <i class="fas fa-play"></i> 继续下一局
+                </button>
+                <button class="btn secondary" onclick="closeModalAndBack()">
+                    <i class="fas fa-home"></i> 返回
+                </button>
+            </div>
+            <div id="startGameButtons" style="display: none;">
+                <button class="btn" onclick="closeModal()" style="background: linear-gradient(135deg, #2ecc71, #27ae60);">
+                    <i class="fas fa-play"></i> 开始出牌
+                </button>
+            </div>
+            <div id="tingButtons" style="display: none;">
+                <p style="color: rgba(255,255,255,0.6); font-size: 0.9rem; margin-top: 15px;">
+                    <i class="fas fa-hand-pointer"></i> 点击任意位置继续
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 单局结算弹窗 -->
+    <div class="round-result-modal" id="roundResultModal">
+        <div class="round-result-content">
+            <h2 class="round-result-title" id="roundResultTitle">🀄 本局结算</h2>
+            <div id="roundResultMessage" class="modal-message"></div>
+            <div class="fan-detail-list" id="fanDetailList"></div>
+            <div class="score-change-list" id="scoreChangeList"></div>
+            <div class="total-score-row">
+                <span>总积分</span>
+                <span id="roundTotalScore">0</span>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px;">
+                <button class="btn" id="continueNextBtn" onclick="continueNextRound()" style="background: linear-gradient(135deg, #2ecc71, #27ae60);">
+                    <i class="fas fa-play"></i> 继续下一局
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最终结算弹窗 -->
+    <div class="match-result-modal" id="matchResultModal">
+        <div class="match-result-content">
+            <h2 class="match-result-title">🏆 全场比赛结束</h2>
+            <p style="margin-bottom: 15px; font-size: 1.1rem;">共进行 <span id="matchTotalRounds">0</span> 局</p>
+            <div class="ranking-list" id="rankingList"></div>
+            <div style="margin-top: 20px;">
+                <button class="btn" onclick="closeMatchResult()">
+                    <i class="fas fa-home"></i> 返回房间
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 聊天面板 -->
+    <button class="chat-toggle-btn" id="chatToggleBtn" onclick="toggleChatPanel()">
+        <i class="fas fa-comment"></i>
+        <span class="chat-badge" id="chatBadge" style="display: none;">0</span>
+    </button>
+    
+    <div class="chat-panel" id="chatPanel">
+        <div class="chat-panel-header">
+            <h4><i class="fas fa-comments"></i> 聊天</h4>
+            <button class="emoji-panel-close" onclick="toggleChatPanel()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-area">
+            <input type="text" class="chat-input" id="chatInput" placeholder="输入消息...">
+            <button class="chat-send" onclick="sendChat()">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 表情面板 -->
+    <button class="emoji-toggle-btn" id="emojiToggleBtn" onclick="toggleEmojiPanel()">
+        <i class="fas fa-smile"></i>
+    </button>
+    
+    <div class="emoji-panel" id="emojiPanel">
+        <div class="emoji-panel-header">
+            <h4><i class="fas fa-smile"></i> 表情</h4>
+            <button class="emoji-panel-close" onclick="toggleEmojiPanel()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="emoji-grid">
+            <button class="emoji-btn" onclick="sendEmoji('😀')">😀</button>
+            <button class="emoji-btn" onclick="sendEmoji('😂')">😂</button>
+            <button class="emoji-btn" onclick="sendEmoji('😍')">😍</button>
+            <button class="emoji-btn" onclick="sendEmoji('😎')">😎</button>
+            <button class="emoji-btn" onclick="sendEmoji('😜')">😜</button>
+            <button class="emoji-btn" onclick="sendEmoji('🤔')">🤔</button>
+            <button class="emoji-btn" onclick="sendEmoji('😱')">😱</button>
+            <button class="emoji-btn" onclick="sendEmoji('👏')">👏</button>
+            <button class="emoji-btn" onclick="sendEmoji('👍')">👍</button>
+            <button class="emoji-btn" onclick="sendEmoji('👎')">👎</button>
+            <button class="emoji-btn" onclick="sendEmoji('🤝')">🤝</button>
+            <button class="emoji-btn" onclick="sendEmoji('🎉')">🎉</button>
+        </div>
+        <div class="quick-phrases">
+            <button class="phrase-btn" onclick="sendPhrase('你好！')">你好！</button>
+            <button class="phrase-btn" onclick="sendPhrase('打得好！')">打得好！</button>
+            <button class="phrase-btn" onclick="sendPhrase('请多指教！')">请多指教！</button>
+            <button class="phrase-btn" onclick="sendPhrase('不好意思！')">不好意思！</button>
+        </div>
+    </div>
+
+    <script>
